@@ -81,7 +81,12 @@ impl App {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(255, 0, 0).unwrap(),
-                                        volume: 50.0 } ],
+                                        volume: 50.0 },
+
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 255, 0).unwrap(),
+                                        volume: 25.0 },
+                    ],
                     ..Default::default()
                 },
 
@@ -89,7 +94,12 @@ impl App {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 255, 0).unwrap(),
-                                        volume: 50.0 } ],
+                                        volume: 50.0 },
+
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
+                                        volume: 25.0 },
+                    ],
                     ..Default::default()
                 },
 
@@ -116,7 +126,24 @@ impl App {
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char('q') => break,
-                        KeyCode::Char(' ') => app.selected = Some(app.cursor),
+                        KeyCode::Char(' ') => {
+                            match app.selected {
+                                Some(i) => {
+                                    if i == app.cursor {
+                                        app.selected = None;
+                                    } else {
+                                        let pour_from = &app.potions[i];
+                                        let pour_into = &app.potions[app.cursor];
+                                        if let Some((a, b)) = pour_from.pour(pour_into) {
+                                            app.potions[i] = a;
+                                            app.potions[app.cursor] = b;
+                                        }
+                                        app.selected = None;
+                                    }
+                                },
+                                None => app.selected = Some(app.cursor)
+                            }
+                        },
                         KeyCode::Down | KeyCode::Char('j') => app.y += 1.0,
                         KeyCode::Up | KeyCode::Char('k') => app.y -= 1.0,
                         KeyCode::Right | KeyCode::Char('l') => app.cursor = (app.cursor + 1).rem_euclid(app.potions.len()),
