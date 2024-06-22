@@ -47,11 +47,14 @@ struct App {
     marker: Marker,
     potions: Vec<Potion>,
     cursor: usize,
-    selected: Option<usize>
+    selected: Option<usize>,
+    levels: Vec<Box<dyn Level>>,
+    level_index: usize,
 }
 
 impl App {
     fn new() -> App {
+        let levels = levels();
         App {
             x: 0.0,
             y: 0.0,
@@ -68,41 +71,9 @@ impl App {
             marker: Marker::Braille,
             cursor: 0,
             selected: None,
-            potions: vec![
-                Potion {
-                    layers: vec![
-                        Layer::Liquid { color:
-                                        color_art::Color::from_rgb(255, 0, 0).unwrap(),
-                                        volume: 50.0 },
-
-                        Layer::Liquid { color:
-                                        color_art::Color::from_rgb(0, 255, 0).unwrap(),
-                                        volume: 25.0 },
-                    ],
-                    ..Default::default()
-                },
-
-                Potion {
-                    layers: vec![
-                        Layer::Liquid { color:
-                                        color_art::Color::from_rgb(0, 255, 0).unwrap(),
-                                        volume: 50.0 },
-
-                        Layer::Liquid { color:
-                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
-                                        volume: 25.0 },
-                    ],
-                    ..Default::default()
-                },
-
-                Potion {
-                    layers: vec![
-                        Layer::Liquid { color:
-                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
-                                        volume: 50.0 } ],
-                    ..Default::default()
-                },
-            ]
+            level_index: 0,
+            potions: levels[0].potions().into_iter().cloned().collect(),
+            levels,
         }
     }
 
@@ -131,6 +102,15 @@ impl App {
                                             app.potions[app.cursor] = b;
                                         }
                                         app.selected = None;
+                                        if app.levels[app.level_index].is_complete(&app.potions) {
+                                            app.level_index += 1;
+                                            if app.level_index >= app.levels.len() {
+                                                // Quit.
+                                                break;
+                                            } else {
+                                                app.potions = app.levels[app.level_index].potions().into_iter().cloned().collect()
+                                            }
+                                        }
                                     }
                                 },
                                 None => app.selected = Some(app.cursor)
@@ -150,7 +130,9 @@ impl App {
                 last_tick = Instant::now();
             }
         }
-        restore_terminal()
+        restore_terminal()?;
+        println!("Thanks for playing!");
+        Ok(())
     }
 
     fn on_tick(&mut self) {

@@ -1,5 +1,8 @@
 use color_art::Color;
 mod tui;
+mod level;
+
+pub use level::{Level, levels};
 
 #[derive(Debug, Clone)]
 pub struct Potion {
