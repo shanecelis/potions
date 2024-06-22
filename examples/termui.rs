@@ -36,6 +36,14 @@ fn main() -> io::Result<()> {
     App::run()
 }
 
+// let cursor: usize = 0;
+// let count: usize = 5;
+// // Move cursor to the right.
+// // cursor + 1 % count
+// KeyCode::Right => (cursor + 1).rem_euclid(count),
+// // Move cursor backwards. cursor - 1 % count
+// KeyCode::Left => (cursor + count - 1).rem_euclid(count),
+
 struct App {
     x: f64,
     y: f64,
@@ -46,6 +54,8 @@ struct App {
     tick_count: u64,
     marker: Marker,
     potions: Vec<Potion>,
+    cursor: usize,
+    selected: Option<usize>
 }
 
 impl App {
@@ -64,6 +74,8 @@ impl App {
             vy: 1.0,
             tick_count: 0,
             marker: Marker::Braille,
+            cursor: 0,
+            selected: None,
             potions: vec![
                 Potion {
                     layers: vec![
@@ -104,10 +116,11 @@ impl App {
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char('q') => break,
+                        KeyCode::Char(' ') => app.selected = Some(app.cursor),
                         KeyCode::Down | KeyCode::Char('j') => app.y += 1.0,
                         KeyCode::Up | KeyCode::Char('k') => app.y -= 1.0,
-                        KeyCode::Right | KeyCode::Char('l') => app.x += 1.0,
-                        KeyCode::Left | KeyCode::Char('h') => app.x -= 1.0,
+                        KeyCode::Right | KeyCode::Char('l') => app.cursor = (app.cursor + 1).rem_euclid(app.potions.len()),
+                        KeyCode::Left | KeyCode::Char('h') => app.cursor = (app.cursor + app.potions.len() - 1).rem_euclid(app.potions.len()),
                         _ => {}
                     }
                 }
@@ -166,8 +179,18 @@ impl App {
             ;
 
         for (i, rect) in layout.split(frame.size()).into_iter().enumerate() {
+            let selected = self.selected.map(|x| x == i).unwrap_or(false);
 
-            frame.render_widget(self.potions[i].clone(), *rect);
+        let [gap, potion, footer] = Layout::vertical([
+            Constraint::Min(if selected { 0 } else { 1 }),
+            Constraint::Percentage(100),
+            Constraint::Min(if selected { 2 } else { 1 })])
+                .areas(*rect);
+            frame.render_widget(self.potions[i].clone(), potion);
+
+            frame.render_widget(Paragraph::new(if self.cursor == i { "/\\" } else { "" })
+                                .alignment(Alignment::Center)
+                                , footer);
         }
 
         // let horizontal =
