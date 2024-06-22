@@ -36,14 +36,6 @@ fn main() -> io::Result<()> {
     App::run()
 }
 
-// let cursor: usize = 0;
-// let count: usize = 5;
-// // Move cursor to the right.
-// // cursor + 1 % count
-// KeyCode::Right => (cursor + 1).rem_euclid(count),
-// // Move cursor backwards. cursor - 1 % count
-// KeyCode::Left => (cursor + count - 1).rem_euclid(count),
-
 struct App {
     x: f64,
     y: f64,
