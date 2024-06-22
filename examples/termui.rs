@@ -26,6 +26,7 @@ use crossterm::{
 use ratatui::{
     prelude::*,
     widgets::{canvas::*, *},
+    layout::Flex,
 };
 
 use color_art;
@@ -44,7 +45,7 @@ struct App {
     vy: f64,
     tick_count: u64,
     marker: Marker,
-    potion: Potion,
+    potions: Vec<Potion>,
 }
 
 impl App {
@@ -63,10 +64,31 @@ impl App {
             vy: 1.0,
             tick_count: 0,
             marker: Marker::Braille,
-            potion: Potion {
-                layers: vec![Layer::Liquid { color: color_art::Color::from_rgb(255, 0, 0).unwrap(), volume: 50.0 } ],
-                ..Default::default()
-            }
+            potions: vec![
+                Potion {
+                    layers: vec![
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(255, 0, 0).unwrap(),
+                                        volume: 50.0 } ],
+                    ..Default::default()
+                },
+
+                Potion {
+                    layers: vec![
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 255, 0).unwrap(),
+                                        volume: 50.0 } ],
+                    ..Default::default()
+                },
+
+                Potion {
+                    layers: vec![
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
+                                        volume: 50.0 } ],
+                    ..Default::default()
+                },
+            ]
         }
     }
 
@@ -130,17 +152,35 @@ impl App {
     }
 
     fn ui(&self, frame: &mut Frame) {
-        let horizontal =
-            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]);
-        let vertical = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]);
-        let [map, right] = horizontal.areas(frame.size());
-        let [pong, boxes] = vertical.areas(right);
+        let percent = 100 / self.potions.len();
+        // let constraint = Constraint::Percentage(percent as u16);
+        let constraint = Constraint::Length(20);
+        let layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(
+                std::iter::repeat(constraint)
+                         .take(self.potions.len()))
+            .margin(5)
+            .flex(Flex::Center)
+            .spacing(10)
+            ;
 
-        frame.render_widget(self.map_canvas(), map);
-        frame.render_widget(self.pong_canvas(), pong);
-        // frame.render_widget(self.boxes_canvas(boxes), boxes);
-        // frame.render_widget(self.potion_canvas(boxes), boxes);
-        frame.render_widget(self.potion.clone(), boxes);
+        for (i, rect) in layout.split(frame.size()).into_iter().enumerate() {
+
+            frame.render_widget(self.potions[i].clone(), *rect);
+        }
+
+        // let horizontal =
+        //     Layout::horizontal([Constraint::Percentage(50),
+        //                         Constraint::Percentage(50)]);
+        // let vertical = Layout::vertical([Constraint::Percentage(50),
+        //                                  Constraint::Percentage(50)]);
+        // let [map, right] = horizontal.areas(frame.size());
+        // let [pong, boxes] = vertical.areas(right);
+
+        // frame.render_widget(self.map_canvas(), map);
+        // frame.render_widget(self.pong_canvas(), pong);
+        // frame.render_widget(self.potion.clone(), boxes);
     }
 
     fn map_canvas(&self) -> impl Widget + '_ {

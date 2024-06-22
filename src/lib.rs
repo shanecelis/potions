@@ -13,7 +13,7 @@ impl Default for Potion {
         Self {
             layers: vec![],
             volume: 100.0,
-            glass: Color::from_rgba(255,255,255,0.5).unwrap(),
+            glass: Color::from_rgba(255, 255, 255, 0.5).unwrap(),
         }
     }
 }
@@ -22,7 +22,7 @@ impl Default for Potion {
 pub enum Layer {
     Liquid { color: Color, volume: f64 },
     Object(Object),
-    Empty
+    Empty,
 }
 
 #[derive(Debug, Clone)]
@@ -30,11 +30,10 @@ pub enum Object {
     Seed,
     BrokenSeeds,
     Creature,
-    Plant
+    Plant,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
 }
