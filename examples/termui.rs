@@ -28,6 +28,9 @@ use ratatui::{
     widgets::{canvas::*, *},
 };
 
+use color_art;
+use potions::*;
+
 fn main() -> io::Result<()> {
     App::run()
 }
@@ -41,6 +44,7 @@ struct App {
     vy: f64,
     tick_count: u64,
     marker: Marker,
+    potion: Potion,
 }
 
 impl App {
@@ -58,7 +62,11 @@ impl App {
             vx: 1.0,
             vy: 1.0,
             tick_count: 0,
-            marker: Marker::Dot,
+            marker: Marker::Braille,
+            potion: Potion {
+                layers: vec![Layer::Liquid { color: color_art::Color::from_rgb(255, 0, 0).unwrap(), volume: 50.0 } ],
+                ..Default::default()
+            }
         }
     }
 
@@ -94,15 +102,15 @@ impl App {
     fn on_tick(&mut self) {
         self.tick_count += 1;
         // only change marker every 180 ticks (3s) to avoid stroboscopic effect
-        if (self.tick_count % 180) == 0 {
-            self.marker = match self.marker {
-                Marker::Dot => Marker::Braille,
-                Marker::Braille => Marker::Block,
-                Marker::Block => Marker::HalfBlock,
-                Marker::HalfBlock => Marker::Bar,
-                Marker::Bar => Marker::Dot,
-            };
-        }
+        // if (self.tick_count % 180) == 0 {
+        //     self.marker = match self.marker {
+        //         Marker::Dot => Marker::Braille,
+        //         Marker::Braille => Marker::Block,
+        //         Marker::Block => Marker::HalfBlock,
+        //         Marker::HalfBlock => Marker::Bar,
+        //         Marker::Bar => Marker::Dot,
+        //     };
+        // }
         // bounce the ball by flipping the velocity vector
         let ball = &self.ball;
         let playground = self.playground;
@@ -130,7 +138,9 @@ impl App {
 
         frame.render_widget(self.map_canvas(), map);
         frame.render_widget(self.pong_canvas(), pong);
-        frame.render_widget(self.boxes_canvas(boxes), boxes);
+        // frame.render_widget(self.boxes_canvas(boxes), boxes);
+        // frame.render_widget(self.potion_canvas(boxes), boxes);
+        frame.render_widget(self.potion.clone(), boxes);
     }
 
     fn map_canvas(&self) -> impl Widget + '_ {
@@ -158,6 +168,29 @@ impl App {
             .x_bounds([10.0, 210.0])
             .y_bounds([10.0, 110.0])
     }
+
+    // fn potion_canvas(&self, area: Rect) -> impl Widget + '_ {
+    //     let left = 0.0;
+    //     let right = f64::from(area.width);
+    //     let bottom = 0.0;
+    //     let top = f64::from(area.height);//.mul_add(2.0, -4.0);
+    //     let center = right / 2.0;
+    //     Canvas::default()
+    //         .block(Block::bordered().title("Potion"))
+    //         .marker(self.marker)
+    //         .x_bounds([0., 100.])
+    //         .y_bounds([bottom, 100.])
+    //         .paint(|ctx| {
+
+    //             ctx.draw(&Rectangle {
+    //                 x: 50. - self.potion.width / 2.0,
+    //                 y: 2.0,
+    //                 width: self.potion.width,
+    //                 height: self.potion.height,
+    //                 color: Color::White,
+    //             });
+    //         })
+    // }
 
     fn boxes_canvas(&self, area: Rect) -> impl Widget {
         let (left, right, bottom, top) =

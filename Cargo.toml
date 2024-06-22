@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+color-art = "0.3.8"
+ratatui = { version = "0.26.3", optional = true }
 
 [dev-dependencies]
 crossterm = "0.27.0"
-ratatui = "0.26.3"
