@@ -7,7 +7,7 @@ pub use vial::{Vial, Layer, Object};
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
 
     #[test]
     fn usize_modulus_substitute() {

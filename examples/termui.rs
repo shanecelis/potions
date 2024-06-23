@@ -29,7 +29,6 @@ use ratatui::{
     layout::Flex,
 };
 
-use color_art;
 use potions::*;
 
 fn main() -> io::Result<()> {
@@ -79,7 +78,7 @@ impl App {
             cursor: 0,
             selected: None,
             level_index: 0,
-            potions: levels[0].potions().into_iter().cloned().collect(),
+            potions: levels[0].potions().iter().cloned().collect(),
             levels,
             state: State::Game,
         }
@@ -207,7 +206,7 @@ impl App {
                             .alignment(Alignment::Center),
                             title);
 
-        for (i, rect) in layout.split(content).into_iter().enumerate() {
+        for (i, rect) in layout.split(content).iter().enumerate() {
             let selected = self.selected.map(|x| x == i).unwrap_or(false);
 
         let [gap, potion, footer] = Layout::vertical([

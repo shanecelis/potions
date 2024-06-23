@@ -9,7 +9,7 @@ pub struct Vial {
 
 impl Vial {
     pub fn top_layer(&self) -> Option<&Layer> {
-        self.layers.get(self.layers.len() - 1)
+        self.layers.last()
     }
 
     pub fn vol(&self) -> f64 {
