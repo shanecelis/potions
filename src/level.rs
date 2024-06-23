@@ -10,7 +10,6 @@ pub struct UnmixLevel {
 }
 
 impl Level for UnmixLevel {
-
     fn potions(&self) -> &[Potion] {
         &self.potions
     }
@@ -29,9 +28,47 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(255, 0, 0).unwrap(),
                                         volume: 50.0 },
-
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 255, 0).unwrap(),
+                                        volume: 50.0 },
+                    ],
+                    ..Default::default()
+                },
+
+                Potion {
+                    layers: vec![
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 255, 0).unwrap(),
+                                        volume: 50.0 },
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
+                                        volume: 25.0 },
+                    ],
+                    ..Default::default()
+                },
+
+                Potion {
+                    layers: vec![
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
+                                        volume: 50.0 } ],
+                    ..Default::default()
+                },
+            ]
+        }),
+
+        Box::new(UnmixLevel {
+            potions: vec![
+                Potion {
+                    layers: vec![
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(255, 0, 0).unwrap(),
+                                        volume: 50.0 },
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 255, 0).unwrap(),
+                                        volume: 25.0 },
+                        Layer::Liquid { color:
+                                        color_art::Color::from_rgb(0, 0, 255).unwrap(),
                                         volume: 25.0 },
                     ],
                     ..Default::default()
@@ -42,7 +79,6 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 255, 0).unwrap(),
                                         volume: 50.0 },
-
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 0, 255).unwrap(),
                                         volume: 25.0 },

@@ -169,6 +169,8 @@ impl App {
         let percent = 100 / self.potions.len();
         // let constraint = Constraint::Percentage(percent as u16);
         let constraint = Constraint::Length(20);
+        let [title, content] = Layout::vertical([Constraint::Length(1),
+                                         Constraint::Percentage(100)]).areas(frame.size());
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(
@@ -178,8 +180,11 @@ impl App {
             .flex(Flex::Center)
             .spacing(10)
             ;
+        frame.render_widget(Paragraph::new(format!("Level {}", self.level_index + 1))
+                            .alignment(Alignment::Center),
+                            title);
 
-        for (i, rect) in layout.split(frame.size()).into_iter().enumerate() {
+        for (i, rect) in layout.split(content).into_iter().enumerate() {
             let selected = self.selected.map(|x| x == i).unwrap_or(false);
 
         let [gap, potion, footer] = Layout::vertical([

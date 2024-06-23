@@ -19,6 +19,7 @@ impl Widget for Potion {
         let volume_per_row = self.volume / (area.height - 1) as f64;
 
         if area.height > 1 {
+            // Draw bottom.
             buf.set_string(
                 area.x + 1,
                 area.y + area.height - 1,
@@ -34,16 +35,22 @@ impl Widget for Potion {
         // Draw contents.
         let mut j = area.y + area.height - 2;
         // let mut volume_remaining = self.volume;
+        let mut slop = 0.0;
+        // dbg!(area);
         for layer in self.layers {
             match layer {
                 Layer::Liquid { color, mut volume } => {
                     let style = Style::new().bg(to_color(color));
+                    volume += slop;
 
                     while volume > 0.0 {
                         buf.set_string(area.x + 1, j, " ".repeat((area.width - 2) as usize), style);
                         volume -= volume_per_row;
                         j = j.saturating_sub(1);
                     }
+                    slop = volume;
+                    // dbg!(volume);
+                    // dbg!(slop);
                 }
                 _ => todo!(),
             }
