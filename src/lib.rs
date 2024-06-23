@@ -3,7 +3,7 @@ mod level;
 mod vial;
 
 pub use level::{Level, levels};
-pub use vial::{Potion, Layer, Object};
+pub use vial::{Vial, Layer, Object};
 
 #[cfg(test)]
 mod tests {

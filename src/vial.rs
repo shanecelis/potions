@@ -1,13 +1,13 @@
 use color_art::Color;
 
 #[derive(Debug, Clone)]
-pub struct Potion {
+pub struct Vial {
     pub layers: Vec<Layer>,
     pub volume: f64,
     pub glass: Color,
 }
 
-impl Potion {
+impl Vial {
     pub fn top_layer(&self) -> Option<&Layer> {
         self.layers.get(self.layers.len() - 1)
     }
@@ -17,7 +17,7 @@ impl Potion {
     }
 
     /// Pour self into other potion.
-    pub fn pour(&self, other: &Potion) -> Option<(Potion, Potion)> {
+    pub fn pour(&self, other: &Vial) -> Option<(Vial, Vial)> {
         self.top_layer()
             .and_then(|a| other.top_layer().and_then(|b| {
                 match (a, b) {
@@ -62,7 +62,7 @@ impl Potion {
     }
 }
 
-impl Default for Potion {
+impl Default for Vial {
     fn default() -> Self {
         Self {
             layers: vec![],

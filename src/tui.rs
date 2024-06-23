@@ -1,4 +1,4 @@
-use super::{Layer, Potion};
+use super::{Layer, Vial};
 use ratatui::{
     prelude::*,
     // widgets::{canvas::*, *},
@@ -11,7 +11,7 @@ fn to_color(color: color_art::Color) -> Color {
     Color::Rgb(color.red(), color.green(), color.blue())
 }
 
-impl Widget for Potion {
+impl Widget for Vial {
     #[allow(clippy::cast_possible_truncation)]
     fn render(self, area: Rect, buf: &mut Buffer) {
         let border = Style::new().bg(to_color(self.glass));

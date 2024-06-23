@@ -1,20 +1,20 @@
 use super::*;
 
 pub trait Level {
-    fn potions(&self) -> &[Potion];
-    fn is_complete(&self, potions: &[Potion]) -> bool;
+    fn potions(&self) -> &[Vial];
+    fn is_complete(&self, potions: &[Vial]) -> bool;
 }
 
 pub struct UnmixLevel {
-    potions: Vec<Potion>,
+    potions: Vec<Vial>,
 }
 
 impl Level for UnmixLevel {
-    fn potions(&self) -> &[Potion] {
+    fn potions(&self) -> &[Vial] {
         &self.potions
     }
 
-    fn is_complete(&self, potions: &[Potion]) -> bool {
+    fn is_complete(&self, potions: &[Vial]) -> bool {
         potions.iter().all(|p| p.layers.len() <= 1)
     }
 }
@@ -23,7 +23,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
     vec![
         Box::new(UnmixLevel {
             potions: vec![
-                Potion {
+                Vial {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(255, 0, 0).unwrap(),
@@ -35,7 +35,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                     ..Default::default()
                 },
 
-                Potion {
+                Vial {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 255, 0).unwrap(),
@@ -47,7 +47,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                     ..Default::default()
                 },
 
-                Potion {
+                Vial {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 0, 255).unwrap(),
@@ -59,7 +59,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
 
         Box::new(UnmixLevel {
             potions: vec![
-                Potion {
+                Vial {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(255, 0, 0).unwrap(),
@@ -74,7 +74,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                     ..Default::default()
                 },
 
-                Potion {
+                Vial {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 255, 0).unwrap(),
@@ -86,7 +86,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                     ..Default::default()
                 },
 
-                Potion {
+                Vial {
                     layers: vec![
                         Layer::Liquid { color:
                                         color_art::Color::from_rgb(0, 0, 255).unwrap(),

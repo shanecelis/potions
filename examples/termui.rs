@@ -45,7 +45,7 @@ struct App {
     vy: f64,
     tick_count: u64,
     marker: Marker,
-    potions: Vec<Potion>,
+    potions: Vec<Vial>,
     cursor: usize,
     selected: Option<usize>,
     levels: Vec<Box<dyn Level>>,
@@ -245,7 +245,7 @@ impl App {
     //     let top = f64::from(area.height);//.mul_add(2.0, -4.0);
     //     let center = right / 2.0;
     //     Canvas::default()
-    //         .block(Block::bordered().title("Potion"))
+    //         .block(Block::bordered().title("Vial"))
     //         .marker(self.marker)
     //         .x_bounds([0., 100.])
     //         .y_bounds([bottom, 100.])
