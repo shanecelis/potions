@@ -1,4 +1,5 @@
 use color_art::Color;
+use approx::abs_diff_eq;
 
 #[derive(Debug, Clone)]
 pub struct Vial {
@@ -14,6 +15,14 @@ impl Vial {
 
     pub fn vol(&self) -> f64 {
         self.layers.iter().map(|l: &Layer| l.volume()).sum()
+    }
+
+    pub fn discard_empties(&mut self) {
+        if let Some(vol) = self.top_layer().map(|l| l.volume()) {
+            if abs_diff_eq!(vol, 0.0, epsilon = 0.01) {
+                self.layers.pop();
+            }
+        }
     }
 
     /// Pour self into other potion.
@@ -34,17 +43,19 @@ impl Vial {
                                         volume: volume_a - empty_volume_b * t,
                                         color: color_a
                                     };
+                                    s.discard_empties();
 
                                     *o.layers.last_mut().unwrap() = Layer::Liquid {
                                         volume: volume_b + empty_volume_b * t,
                                         color: color_b
                                     };
+                                    o.discard_empties();
                                 } else {
                                     // We pour all.
                                     s.layers.pop();
 
                                     *o.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_b * t + volume_a,
+                                        volume: volume_b + volume_a,
                                         color: color_b
                                     };
                                 }

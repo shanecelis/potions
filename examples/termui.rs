@@ -25,7 +25,7 @@ use crossterm::{
 };
 use ratatui::{
     prelude::*,
-    widgets::{canvas::*, *},
+    widgets::*,
     layout::Flex,
 };
 
@@ -35,46 +35,51 @@ fn main() -> io::Result<()> {
     App::run()
 }
 
+// #[derive(Debug)]
 struct App {
-    x: f64,
-    y: f64,
-    ball: Circle,
-    playground: Rect,
-    vx: f64,
-    vy: f64,
     tick_count: u64,
-    marker: Marker,
     potions: Vec<Vial>,
     cursor: usize,
     selected: Option<usize>,
+    // #[skip]
     levels: Vec<Box<dyn Level>>,
     level_index: usize,
     state: State,
 }
 
+#[derive(Debug)]
 enum State {
     Game,
     NextLevel,
     Pouring(Vial, Vial, f64),
+    End,
+}
+
+fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
 
 impl App {
     fn new() -> App {
         let levels = levels();
         App {
-            x: 0.0,
-            y: 0.0,
-            ball: Circle {
-                x: 20.0,
-                y: 40.0,
-                radius: 10.0,
-                color: Color::Yellow,
-            },
-            playground: Rect::new(10, 10, 200, 100),
-            vx: 1.0,
-            vy: 1.0,
             tick_count: 0,
-            marker: Marker::Braille,
             cursor: 0,
             selected: None,
             level_index: 0,
@@ -96,23 +101,38 @@ impl App {
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char('q') => break,
-                        KeyCode::Char(' ') => {
-                            match app.selected {
-                                Some(i) => {
-                                    if i == app.cursor {
-                                        app.selected = None;
-                                    } else {
-                                        app.state = State::Pouring(app.potions[i].clone(), app.potions[app.cursor].clone(), 0.0);
-                                    }
-                                },
-                                None => app.selected = Some(app.cursor)
+                        _ => {},
+                    }
+                    match app.state {
+                        State::NextLevel => {
+                            app.level_index += 1;
+                            if app.level_index >= app.levels.len() {
+                                app.state = State::End;
+                            } else {
+                                app.potions = app.levels[app.level_index].potions().into_iter().cloned().collect();
+                                app.state = State::Game;
                             }
-                        },
-                        KeyCode::Down | KeyCode::Char('j') => app.y += 1.0,
-                        KeyCode::Up | KeyCode::Char('k') => app.y -= 1.0,
-                        KeyCode::Right | KeyCode::Char('l') => app.cursor = (app.cursor + 1).rem_euclid(app.potions.len()),
-                        KeyCode::Left | KeyCode::Char('h') => app.cursor = (app.cursor + app.potions.len() - 1).rem_euclid(app.potions.len()),
-                        _ => {}
+                        }
+                        State::Game => match key.code {
+                            KeyCode::Char(' ') => {
+                                match app.selected {
+                                    Some(i) => {
+                                        if i == app.cursor {
+                                            app.selected = None;
+                                        } else {
+                                            app.state = State::Pouring(app.potions[i].clone(), app.potions[app.cursor].clone(), 0.0);
+                                        }
+                                    },
+                                    None => app.selected = Some(app.cursor)
+                                }
+                            },
+                            // KeyCode::Down | KeyCode::Char('j') => app.y += 1.0,
+                            // KeyCode::Up | KeyCode::Char('k') => app.y -= 1.0,
+                            KeyCode::Right | KeyCode::Char('l') => app.cursor = (app.cursor + 1).rem_euclid(app.potions.len()),
+                            KeyCode::Left | KeyCode::Char('h') => app.cursor = (app.cursor + app.potions.len() - 1).rem_euclid(app.potions.len()),
+                            _ => {}
+                        }
+                        _ => {},
                     }
                 }
             }
@@ -130,10 +150,6 @@ impl App {
     fn on_tick(&mut self) {
         self.tick_count += 1;
         match self.state {
-            State::Game => {
-            },
-            State::NextLevel => {
-            },
             State::Pouring(ref pour_from, ref pour_into, ref mut t) => {
                 // let pour_from = &self.potions[i];
                 // let pour_into = &self.potions[self.cursor];
@@ -152,51 +168,50 @@ impl App {
                 //         self.potions = self.levels[self.level_index].potions().into_iter().cloned().collect()
                 //     }
                 // }
-                if *t > 1.0 {
+                if *t >= 1.0 {
                     self.selected = None;
-                    self.state = State::Game;
+                    // eprintln!("{:?}", self.potions);
+
+                    if self.levels[self.level_index].is_complete(&self.potions) {
+                        self.state = State::NextLevel;
+                    } else {
+                        self.state = State::Game;
+                    }
                 }
             }
-
+            _ => ()
         }
-        // only change marker every 180 ticks (3s) to avoid stroboscopic effect
-        // if (self.tick_count % 180) == 0 {
-        //     self.marker = match self.marker {
-        //         Marker::Dot => Marker::Braille,
-        //         Marker::Braille => Marker::Block,
-        //         Marker::Block => Marker::HalfBlock,
-        //         Marker::HalfBlock => Marker::Bar,
-        //         Marker::Bar => Marker::Dot,
-        //     };
-        // }
-        // bounce the ball by flipping the velocity vector
-        let ball = &self.ball;
-        let playground = self.playground;
-        if ball.x - ball.radius < playground.left() as f64
-            || ball.x + ball.radius > playground.right() as f64
-        {
-            self.vx = -self.vx;
-        }
-        if ball.y - ball.radius < playground.top() as f64
-            || ball.y + ball.radius > playground.bottom() as f64
-        {
-            self.vy = -self.vy;
-        }
-
-        self.ball.x += self.vx;
-        self.ball.y += self.vy;
     }
 
+
     fn ui(&self, frame: &mut Frame) {
-        let percent = 100 / self.potions.len();
-        // let constraint = Constraint::Percentage(percent as u16);
-        let constraint = Constraint::Length(20);
+        match self.state {
+            State::Game | State::Pouring(_, _, _) => self.render_game(frame),
+            State::NextLevel => {
+                self.render_game(frame);
+                let rect = centered_rect(frame.size(), 35, 35);
+                frame.render_widget(Clear, rect);
+                frame.render_widget(
+                    Paragraph::new(format!("You passed level {}", self.level_index + 1))
+                        .block(
+                            Block::default().borders(Borders::all()),
+                        )
+                        .alignment(Alignment::Center),
+                    rect,
+                    )
+            }
+            _ => ()
+        }
+    }
+
+    fn render_game(&self, frame: &mut Frame) {
         let [title, content] = Layout::vertical([Constraint::Length(1),
-                                         Constraint::Percentage(100)]).areas(frame.size());
+                                         Constraint::Percentage(100)])
+            .areas(frame.size());
         let layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(
-                std::iter::repeat(constraint)
+                std::iter::repeat(Constraint::Fill(1))
                          .take(self.potions.len()))
             .margin(5)
             .flex(Flex::Center)
@@ -209,7 +224,7 @@ impl App {
         for (i, rect) in layout.split(content).iter().enumerate() {
             let selected = self.selected.map(|x| x == i).unwrap_or(false);
 
-        let [gap, potion, footer] = Layout::vertical([
+        let [_gap, potion, footer] = Layout::vertical([
             Constraint::Min(if selected { 0 } else { 1 }),
             Constraint::Percentage(100),
             Constraint::Min(if selected { 2 } else { 1 })])
@@ -220,103 +235,6 @@ impl App {
                                 .alignment(Alignment::Center)
                                 , footer);
         }
-
-        // let horizontal =
-        //     Layout::horizontal([Constraint::Percentage(50),
-        //                         Constraint::Percentage(50)]);
-        // let vertical = Layout::vertical([Constraint::Percentage(50),
-        //                                  Constraint::Percentage(50)]);
-        // let [map, right] = horizontal.areas(frame.size());
-        // let [pong, boxes] = vertical.areas(right);
-
-        // frame.render_widget(self.map_canvas(), map);
-        // frame.render_widget(self.pong_canvas(), pong);
-        // frame.render_widget(self.potion.clone(), boxes);
-    }
-
-    fn map_canvas(&self) -> impl Widget + '_ {
-        Canvas::default()
-            .block(Block::default().borders(Borders::ALL).title("World"))
-            .marker(self.marker)
-            .paint(|ctx| {
-                ctx.draw(&Map {
-                    color: Color::Green,
-                    resolution: MapResolution::High,
-                });
-                ctx.print(self.x, -self.y, "You are here".yellow());
-            })
-            .x_bounds([-180.0, 180.0])
-            .y_bounds([-90.0, 90.0])
-    }
-
-    fn pong_canvas(&self) -> impl Widget + '_ {
-        Canvas::default()
-            .block(Block::default().borders(Borders::ALL).title("Pong"))
-            .marker(self.marker)
-            .paint(|ctx| {
-                ctx.draw(&self.ball);
-            })
-            .x_bounds([10.0, 210.0])
-            .y_bounds([10.0, 110.0])
-    }
-
-    // fn potion_canvas(&self, area: Rect) -> impl Widget + '_ {
-    //     let left = 0.0;
-    //     let right = f64::from(area.width);
-    //     let bottom = 0.0;
-    //     let top = f64::from(area.height);//.mul_add(2.0, -4.0);
-    //     let center = right / 2.0;
-    //     Canvas::default()
-    //         .block(Block::bordered().title("Vial"))
-    //         .marker(self.marker)
-    //         .x_bounds([0., 100.])
-    //         .y_bounds([bottom, 100.])
-    //         .paint(|ctx| {
-
-    //             ctx.draw(&Rectangle {
-    //                 x: 50. - self.potion.width / 2.0,
-    //                 y: 2.0,
-    //                 width: self.potion.width,
-    //                 height: self.potion.height,
-    //                 color: Color::White,
-    //             });
-    //         })
-    // }
-
-    fn boxes_canvas(&self, area: Rect) -> impl Widget {
-        let (left, right, bottom, top) =
-            (0.0, area.width as f64, 0.0, area.height as f64 * 2.0 - 4.0);
-        Canvas::default()
-            .block(Block::default().borders(Borders::ALL).title("Rects"))
-            .marker(self.marker)
-            .x_bounds([left, right])
-            .y_bounds([bottom, top])
-            .paint(|ctx| {
-                for i in 0..=11 {
-                    ctx.draw(&Rectangle {
-                        x: (i * i + 3 * i) as f64 / 2.0 + 2.0,
-                        y: 2.0,
-                        width: i as f64,
-                        height: i as f64,
-                        color: Color::Red,
-                    });
-                    ctx.draw(&Rectangle {
-                        x: (i * i + 3 * i) as f64 / 2.0 + 2.0,
-                        y: 21.0,
-                        width: i as f64,
-                        height: i as f64,
-                        color: Color::Blue,
-                    });
-                }
-                for i in 0..100 {
-                    if i % 10 != 0 {
-                        ctx.print(i as f64 + 1.0, 0.0, format!("{i}", i = i % 10));
-                    }
-                    if i % 2 == 0 && i % 10 != 0 {
-                        ctx.print(0.0, i as f64, format!("{i}", i = i % 10));
-                    }
-                }
-            })
     }
 }
 

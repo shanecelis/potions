@@ -7,6 +7,7 @@ edition = "2021"
 default = [ "ratatui" ]
 
 [dependencies]
+approx = "0.5.1"
 color-art = "0.3.8"
 ratatui = { version = "0.26.3", optional = true }
 
