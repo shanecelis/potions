@@ -139,6 +139,7 @@ impl App {
                             }
                             _ => {}
                         },
+                        State::End => break,
                         _ => {}
                     }
                 }
@@ -150,7 +151,6 @@ impl App {
             }
         }
         restore_terminal()?;
-        println!("Thanks for playing!");
         Ok(())
     }
 
@@ -199,6 +199,18 @@ impl App {
                 frame.render_widget(Clear, rect);
                 frame.render_widget(
                     Paragraph::new(format!("You passed level {}", self.level_index + 1))
+                        .block(Block::default().borders(Borders::all()))
+                        .alignment(Alignment::Center),
+                    rect,
+                )
+            }
+
+            State::End => {
+                self.render_game(frame);
+                let rect = centered_rect(frame.size(), 35, 35);
+                frame.render_widget(Clear, rect);
+                frame.render_widget(
+                    Paragraph::new("You finished the game!\nThanks for playing.")
                         .block(Block::default().borders(Borders::all()))
                         .alignment(Alignment::Center),
                     rect,
