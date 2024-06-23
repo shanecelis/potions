@@ -1,17 +1,6 @@
-//! # [Ratatui] Canvas example
+//! Terminal UI for potions game
 //!
-//! The latest version of this example is available in the [examples] folder in the repository.
-//!
-//! Please note that the examples are designed to be run against the `main` branch of the Github
-//! repository. This means that you may not be able to compile with the latest release version on
-//! crates.io, or the one that you have installed locally.
-//!
-//! See the [examples readme] for more information on finding examples that match the version of the
-//! library you are using.
-//!
-//! [Ratatui]: https://github.com/ratatui-org/ratatui
-//! [examples]: https://github.com/ratatui-org/ratatui/blob/main/examples
-//! [examples readme]: https://github.com/ratatui-org/ratatui/blob/main/examples/README.md
+//! Originally derived from Ratatui canvas example.
 
 use std::{
     io::{self, stdout, Stdout},
@@ -101,10 +90,10 @@ impl App {
                     }
                     match app.state {
                         State::NextLevel => {
-                            app.level_index += 1;
-                            if app.level_index >= app.levels.len() {
+                            if app.level_index + 1 >= app.levels.len() {
                                 app.state = State::End;
                             } else {
+                                app.level_index += 1;
                                 app.potions = app.levels[app.level_index]
                                     .potions()
                                     .into_iter()
@@ -128,8 +117,6 @@ impl App {
                                 }
                                 None => app.selected = Some(app.cursor),
                             },
-                            // KeyCode::Down | KeyCode::Char('j') => app.y += 1.0,
-                            // KeyCode::Up | KeyCode::Char('k') => app.y -= 1.0,
                             KeyCode::Right | KeyCode::Char('l') => {
                                 app.cursor = (app.cursor + 1).rem_euclid(app.potions.len())
                             }
@@ -139,7 +126,10 @@ impl App {
                             }
                             _ => {}
                         },
-                        State::End => break,
+                        State::End => {}
+                            // match key.code {
+                            //     _ => break
+                            // }
                         _ => {}
                     }
                 }
@@ -158,27 +148,13 @@ impl App {
         self.tick_count += 1;
         match self.state {
             State::Pouring(ref pour_from, ref pour_into, ref mut t) => {
-                // let pour_from = &self.potions[i];
-                // let pour_into = &self.potions[self.cursor];
                 if let Some((a, b)) = pour_from.pour(pour_into, *t) {
                     self.potions[self.selected.unwrap()] = a;
                     self.potions[self.cursor] = b;
                 }
                 *t += 0.1;
-                // self.selected = None;
-                // if self.levels[self.level_index].is_complete(&self.potions) {
-                //     self.level_index += 1;
-                //     if self.level_index >= self.levels.len() {
-                //         // Quit.
-                //         break;
-                //     } else {
-                //         self.potions = self.levels[self.level_index].potions().into_iter().cloned().collect()
-                //     }
-                // }
                 if *t >= 1.0 {
                     self.selected = None;
-                    // eprintln!("{:?}", self.potions);
-
                     if self.levels[self.level_index].is_complete(&self.potions) {
                         self.state = State::NextLevel;
                     } else {
@@ -204,19 +180,17 @@ impl App {
                     rect,
                 )
             }
-
             State::End => {
                 self.render_game(frame);
                 let rect = centered_rect(frame.size(), 35, 35);
                 frame.render_widget(Clear, rect);
                 frame.render_widget(
-                    Paragraph::new("You finished the game!\nThanks for playing.")
+                    Paragraph::new("You finished the game!\nThanks for playing.\nHit 'q' to quit.")
                         .block(Block::default().borders(Borders::all()))
                         .alignment(Alignment::Center),
                     rect,
                 )
             }
-            _ => (),
         }
     }
 
@@ -234,6 +208,7 @@ impl App {
             Paragraph::new(format!("Level {}", self.level_index + 1)).alignment(Alignment::Center),
             title,
         );
+        let palette = self.levels[self.level_index].palette();
 
         for (i, rect) in layout.split(content).iter().enumerate() {
             let selected = self.selected.map(|x| x == i).unwrap_or(false);
@@ -244,7 +219,8 @@ impl App {
                 Constraint::Min(if selected { 2 } else { 1 }),
             ])
             .areas(*rect);
-            frame.render_widget(self.potions[i].clone(), potion);
+
+            frame.render_widget(tui::VialWidget(&self.potions[i], palette), potion);
 
             frame.render_widget(
                 Paragraph::new(if self.cursor == i { "/\\" } else { "" })

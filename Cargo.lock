@@ -113,6 +113,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derived-deref"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "805ef2023ccd65425743a91ecd11fc020979a0b01921db3104fb606d18a7b43e"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "either"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -159,6 +170,12 @@ name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
+
+[[package]]
+name = "kolorwheel"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aff9ca63405ea9df2da4fac948c8bf626ee46306b3e1569b28142fa34764fdb2"
 
 [[package]]
 name = "lazy_static"
@@ -260,6 +277,8 @@ dependencies = [
  "approx",
  "color-art",
  "crossterm",
+ "derived-deref",
+ "kolorwheel",
  "ratatui",
 ]
 

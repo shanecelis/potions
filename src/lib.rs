@@ -1,9 +1,9 @@
 mod level;
-mod tui;
+pub mod tui;
 mod vial;
 
-pub use level::{levels, Level};
-pub use vial::{Layer, Object, Vial};
+pub use level::{levels, Level, Palette};
+pub use vial::{Layer, Object, Vial, Color};
 
 #[cfg(test)]
 mod tests {

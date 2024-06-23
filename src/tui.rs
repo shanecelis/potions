@@ -1,20 +1,27 @@
-use super::{Layer, Vial};
+use super::{Layer, Vial, Palette};
 use ratatui::{
     prelude::*,
     // widgets::{canvas::*, *},
 };
 // use std::iter;
 
-fn to_color(color: color_art::Color) -> Color {
-    Color::Rgb(color.red(), color.green(), color.blue())
+
+impl From<crate::Color> for Color {
+    fn from(color: crate::Color) -> Self {
+        Color::Rgb(color.red(), color.green(), color.blue())
+    }
 }
 
-impl Widget for Vial {
+#[derive(Debug, Clone)]
+pub struct VialWidget<'a>(pub &'a Vial, pub &'a Palette);
+
+impl<'a> Widget for VialWidget<'a> {
     #[allow(clippy::cast_possible_truncation)]
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let border = Style::new().bg(to_color(self.glass));
+        let VialWidget(vial, palette) = self;
+        let border = Style::new().bg(vial.glass.clone().into());
         // let view_volume = (area.width - 2) * (area.height - 1);
-        let volume_per_row = self.volume / (area.height - 1) as f64;
+        let volume_per_row = vial.volume / (area.height - 1) as f64;
 
         if area.height > 1 {
             // Draw bottom.
@@ -32,13 +39,13 @@ impl Widget for Vial {
         }
         // Draw contents.
         let mut j = area.y + area.height - 2;
-        // let mut volume_remaining = self.volume;
+        // let mut volume_remaining = vial.volume;
         let mut slop = 0.0;
         // dbg!(area);
-        for layer in self.layers {
+        for layer in &vial.layers {
             match layer {
-                Layer::Liquid { color, mut volume } => {
-                    let style = Style::new().bg(to_color(color));
+                Layer::Liquid { id, mut volume } => {
+                    let style = Style::new().bg(palette[*id].clone().into());
                     volume += slop;
 
                     while volume > 0.0 {
