@@ -17,26 +17,26 @@ impl Vial {
     }
 
     /// Pour self into other potion.
-    pub fn pour(&self, other: &Vial) -> Option<(Vial, Vial)> {
+    pub fn pour(&self, other: &Vial, t: f64) -> Option<(Vial, Vial)> {
         self.top_layer()
             .and_then(|a| other.top_layer().and_then(|b| {
                 match (a, b) {
                     (&Layer::Liquid { color: color_a, volume: volume_a },
                      &Layer::Liquid { color: color_b, volume: volume_b }) =>
                         if color_a == color_b {
-                            let empty_volume = other.volume - other.vol();
-                            if empty_volume > 0.0 {
+                            let empty_volume_b = other.volume - other.vol();
+                            if empty_volume_b > 0.0 {
                                 let mut s = self.clone();
                                 let mut o = other.clone();
-                                if volume_a > empty_volume {
+                                if volume_a > empty_volume_b * t {
                                     // We pour some.
                                     *s.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_a - empty_volume,
+                                        volume: volume_a - empty_volume_b * t,
                                         color: color_a
                                     };
 
                                     *o.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_b + empty_volume,
+                                        volume: volume_b + empty_volume_b * t,
                                         color: color_b
                                     };
                                 } else {
@@ -44,7 +44,7 @@ impl Vial {
                                     s.layers.pop();
 
                                     *o.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_b + volume_a,
+                                        volume: volume_b * t + volume_a,
                                         color: color_b
                                     };
                                 }

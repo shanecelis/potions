@@ -50,6 +50,13 @@ struct App {
     selected: Option<usize>,
     levels: Vec<Box<dyn Level>>,
     level_index: usize,
+    state: State,
+}
+
+enum State {
+    Game,
+    NextLevel,
+    Pouring(Vial, Vial, f64),
 }
 
 impl App {
@@ -74,6 +81,7 @@ impl App {
             level_index: 0,
             potions: levels[0].potions().into_iter().cloned().collect(),
             levels,
+            state: State::Game,
         }
     }
 
@@ -95,22 +103,7 @@ impl App {
                                     if i == app.cursor {
                                         app.selected = None;
                                     } else {
-                                        let pour_from = &app.potions[i];
-                                        let pour_into = &app.potions[app.cursor];
-                                        if let Some((a, b)) = pour_from.pour(pour_into) {
-                                            app.potions[i] = a;
-                                            app.potions[app.cursor] = b;
-                                        }
-                                        app.selected = None;
-                                        if app.levels[app.level_index].is_complete(&app.potions) {
-                                            app.level_index += 1;
-                                            if app.level_index >= app.levels.len() {
-                                                // Quit.
-                                                break;
-                                            } else {
-                                                app.potions = app.levels[app.level_index].potions().into_iter().cloned().collect()
-                                            }
-                                        }
+                                        app.state = State::Pouring(app.potions[i].clone(), app.potions[app.cursor].clone(), 0.0);
                                     }
                                 },
                                 None => app.selected = Some(app.cursor)
@@ -137,6 +130,36 @@ impl App {
 
     fn on_tick(&mut self) {
         self.tick_count += 1;
+        match self.state {
+            State::Game => {
+            },
+            State::NextLevel => {
+            },
+            State::Pouring(ref pour_from, ref pour_into, ref mut t) => {
+                // let pour_from = &self.potions[i];
+                // let pour_into = &self.potions[self.cursor];
+                if let Some((a, b)) = pour_from.pour(pour_into, *t) {
+                    self.potions[self.selected.unwrap()] = a;
+                    self.potions[self.cursor] = b;
+                }
+                *t += 0.1;
+                // self.selected = None;
+                // if self.levels[self.level_index].is_complete(&self.potions) {
+                //     self.level_index += 1;
+                //     if self.level_index >= self.levels.len() {
+                //         // Quit.
+                //         break;
+                //     } else {
+                //         self.potions = self.levels[self.level_index].potions().into_iter().cloned().collect()
+                //     }
+                // }
+                if *t > 1.0 {
+                    self.selected = None;
+                    self.state = State::Game;
+                }
+            }
+
+        }
         // only change marker every 180 ticks (3s) to avoid stroboscopic effect
         // if (self.tick_count % 180) == 0 {
         //     self.marker = match self.marker {
