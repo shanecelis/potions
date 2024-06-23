@@ -1,10 +1,5 @@
-use super::{Layer, Vial, Palette};
-use ratatui::{
-    prelude::*,
-    // widgets::{canvas::*, *},
-};
-// use std::iter;
-
+use super::{Layer, Palette, Vial, Object};
+use ratatui::prelude::*;
 
 impl From<crate::Color> for Color {
     fn from(color: crate::Color) -> Self {
@@ -56,6 +51,17 @@ impl<'a> Widget for VialWidget<'a> {
                     slop = volume;
                     // dbg!(volume);
                     // dbg!(slop);
+                },
+                Layer::Object(o) => match o {
+                    Object::Seed => {
+                        buf.set_string(
+                            area.x + area.width / 2,
+                            area.y + area.height - 2,
+                            " ".repeat(2 as usize),
+                            border,
+                        );
+                    },
+                    _ => todo!(),
                 }
                 _ => todo!(),
             }

@@ -1,15 +1,30 @@
 use super::*;
 use derived_deref::{Deref, DerefMut};
+use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
 use std::collections::BinaryHeap;
-use kolorwheel::{KolorWheel, RgbColor, SpinMode, HslColor};
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct Palette(Vec<Color>);
 
+pub fn rgb(r: u8, g: u8, b: u8) -> Color {
+    color_art::Color::from_rgb(r, g, b).unwrap().into()
+}
+
 impl Palette {
-    fn new<I, J>(iter: I) -> Self where I: IntoIterator<Item = J>,
-    J: Into<Color> {
+    pub fn new<I, J>(iter: I) -> Self
+    where
+        I: IntoIterator<Item = J>,
+        J: Into<Color>,
+    {
         Self(iter.into_iter().map(|x| x.into()).collect())
+    }
+
+    pub fn color(&self, layer: &Layer) -> Color {
+        match layer {
+            Layer::Object(_) => rgb(255, 255, 255),
+            Layer::Liquid { id, .. } => self.0[*id].clone(),
+            _ => todo!()
+        }
     }
 }
 
@@ -25,7 +40,6 @@ pub struct UnmixLevel {
 }
 
 impl Default for UnmixLevel {
-
     fn default() -> Self {
         Self {
             palette: Palette::new(vec![
@@ -40,16 +54,55 @@ impl Default for UnmixLevel {
 
 impl UnmixLevel {
     fn new(vials: Vec<Vial>) -> Self {
-        let heap: BinaryHeap<usize> = vials.iter().flat_map(|v| &v.layers).filter_map(|l| if let Layer::Liquid {id, ..} = l { Some(*id) } else { None }).collect();
+        let heap: BinaryHeap<usize> = vials
+            .iter()
+            .flat_map(|v| &v.layers)
+            .filter_map(|l| {
+                if let Layer::Liquid { id, .. } = l {
+                    Some(*id)
+                } else {
+                    None
+                }
+            })
+            .collect();
         // let mut kw = KolorWheel::new(RgbColor { r: 255, g: 0, b: 0 }, heap.len());
         // let mut kw = KolorWheel::new(HslColor { h: 185.0, s: 70.0, l: 65.0 }, heap.len());
-        let mut kw = KolorWheel::new(HslColor { h: 240.0, s: 82.0, l: 64.0 }, heap.len());
+        let mut kw = KolorWheel::new(
+            HslColor {
+                h: 240.0,
+                s: 82.0,
+                l: 64.0,
+            },
+            heap.len(),
+        );
         kw.with_hue(SpinMode::RelativeExcl(-360));
-        let colors: Vec<color_art::Color> = kw.map(|c| RgbColor::from(c)).map(|RgbColor { r,g,b }| color_art::Color::from_rgb(r, g, b).unwrap()).collect();
+        let colors: Vec<color_art::Color> = kw
+            .map(|c| RgbColor::from(c))
+            .map(|RgbColor { r, g, b }| color_art::Color::from_rgb(r, g, b).unwrap())
+            .collect();
         assert_eq!(colors.len(), heap.len());
         Self {
             palette: Palette::new(colors),
             potions: vials,
+        }
+    }
+}
+
+pub enum Goal {
+    Unmix,
+}
+
+// #[derive(Debug, Clone)]
+// pub struct UnmixGoal;
+
+// trait Goal {
+//     fn is_complete(&self, potions: &[Vial]) -> bool;
+// }
+
+impl Goal {
+    fn is_complete(&self, potions: &[Vial]) -> bool {
+        match self {
+            Goal::Unmix => potions.iter().all(|p| p.layers.len() <= 1),
         }
     }
 }
@@ -70,111 +123,114 @@ impl Level for UnmixLevel {
 
 pub fn levels() -> Vec<Box<dyn Level>> {
     vec![
-
-        Box::new(UnmixLevel::new(
-            vec![
-                Vial {
-                    layers: vec![
-                        Layer::Liquid {
-                            id: 0,
-                            volume: 50.0,
-                        },
-                        Layer::Liquid {
-                            id: 1,
-                            volume: 50.0,
-                        },
-                    ],
-                    ..Default::default()
-                },
-                Vial {
-                    layers: vec![
-                        Layer::Liquid {
-                            id: 1,
-                            volume: 50.0,
-                        },
-                    ],
-                    ..Default::default()
-                },
-            ],
-        )),
-        Box::new(UnmixLevel::new(
-            vec![
-                Vial {
-                    layers: vec![
-                        Layer::Liquid {
-                            id: 0,
-                            volume: 50.0,
-                        },
-                        Layer::Liquid {
-                            id: 1,
-                            volume: 50.0,
-                        },
-                    ],
-                    ..Default::default()
-                },
-                Vial {
-                    layers: vec![
-                        Layer::Liquid {
-                            id: 1,
-                            volume: 50.0,
-                        },
-                        Layer::Liquid {
-                            id: 2,
-                            volume: 25.0,
-                        },
-                    ],
-                    ..Default::default()
-                },
-                Vial {
-                    layers: vec![Layer::Liquid {
-                        id: 2,
+        Box::new(UnmixLevel::new(vec![
+            Vial {
+                layers: vec![
+                    Layer::Object(Object::Seed),
+                ],
+                ..Default::default()
+            },
+            Vial {
+                layers: vec![
+                ],
+                ..Default::default()
+            },
+        ])),
+        Box::new(UnmixLevel::new(vec![
+            Vial {
+                layers: vec![
+                    Layer::Liquid {
+                        id: 0,
                         volume: 50.0,
-                    }],
-                    ..Default::default()
-                },
-            ],
-        )),
-
-        Box::new(UnmixLevel::new(
-            vec![
-                Vial {
-                    layers: vec![
-                        Layer::Liquid {
-                            id: 0,
-                            volume: 50.0,
-                        },
-                        Layer::Liquid {
-                            id: 1,
-                            volume: 25.0,
-                        },
-                        Layer::Liquid {
-                            id: 2,
-                            volume: 25.0,
-                        },
-                    ],
-                    ..Default::default()
-                },
-                Vial {
-                    layers: vec![
-                        Layer::Liquid {
-                            id: 1,
-                            volume: 50.0,
-                        },
-                        Layer::Liquid {
-                            id: 2,
-                            volume: 25.0,
-                        },
-                    ],
-                    ..Default::default()
-                },
-                Vial {
-                    layers: vec![Layer::Liquid {
-                        id: 2,
+                    },
+                    Layer::Liquid {
+                        id: 1,
                         volume: 50.0,
-                    }],
-                    ..Default::default()
-                },
-            ]
-        )),
+                    },
+                ],
+                ..Default::default()
+            },
+            Vial {
+                layers: vec![Layer::Liquid {
+                    id: 1,
+                    volume: 50.0,
+                }],
+                ..Default::default()
+            },
+        ])),
+        Box::new(UnmixLevel::new(vec![
+            Vial {
+                layers: vec![
+                    Layer::Liquid {
+                        id: 0,
+                        volume: 50.0,
+                    },
+                    Layer::Liquid {
+                        id: 1,
+                        volume: 50.0,
+                    },
+                ],
+                ..Default::default()
+            },
+            Vial {
+                layers: vec![
+                    Layer::Liquid {
+                        id: 1,
+                        volume: 50.0,
+                    },
+                    Layer::Liquid {
+                        id: 2,
+                        volume: 25.0,
+                    },
+                ],
+                ..Default::default()
+            },
+            Vial {
+                layers: vec![Layer::Liquid {
+                    id: 2,
+                    volume: 50.0,
+                }],
+                ..Default::default()
+            },
+        ])),
+        Box::new(UnmixLevel::new(vec![
+            Vial {
+                layers: vec![
+                    Layer::Liquid {
+                        id: 0,
+                        volume: 50.0,
+                    },
+                    Layer::Liquid {
+                        id: 1,
+                        volume: 25.0,
+                    },
+                    Layer::Liquid {
+                        id: 2,
+                        volume: 25.0,
+                    },
+                ],
+                ..Default::default()
+            },
+            Vial {
+                layers: vec![
+                    Layer::Liquid {
+                        id: 1,
+                        volume: 50.0,
+                    },
+                    Layer::Liquid {
+                        id: 2,
+                        volume: 25.0,
+                    },
+                ],
+                ..Default::default()
+            },
+            Vial {
+                layers: vec![Layer::Liquid {
+                    id: 2,
+                    volume: 50.0,
+                }],
+                ..Default::default()
+            },
+        ])),
     ]
 }

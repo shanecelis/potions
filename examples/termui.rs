@@ -20,13 +20,11 @@ fn main() -> io::Result<()> {
     App::run()
 }
 
-// #[derive(Debug)]
 struct App {
     tick_count: u64,
     potions: Vec<Vial>,
     cursor: usize,
     selected: Option<usize>,
-    // #[skip]
     levels: Vec<Box<dyn Level>>,
     level_index: usize,
     state: State,
@@ -126,10 +124,7 @@ impl App {
                             }
                             _ => {}
                         },
-                        State::End => {}
-                            // match key.code {
-                            //     _ => break
-                            // }
+                        State::End => {},
                         _ => {}
                     }
                 }

@@ -1,5 +1,5 @@
-use derived_deref::{Deref, DerefMut};
 use approx::abs_diff_eq;
+use derived_deref::{Deref, DerefMut};
 // use color_art::Color;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -16,6 +16,50 @@ pub struct Vial {
     pub layers: Vec<Layer>,
     pub volume: f64,
     pub glass: Color,
+}
+
+#[derive(Debug, Clone)]
+pub enum Layer {
+    Liquid { id: usize, volume: f64 },
+    Object(Object),
+    Empty,
+}
+
+#[derive(Debug, Clone)]
+pub enum Object {
+    Seed,
+    BrokenSeed,
+    Creature,
+    Plant,
+}
+
+// pub enum Liquid {
+//     Water,
+//     Oil,
+// }
+
+impl Layer {
+    // pub fn color(&self) -> Color {
+    //     match self {
+    //         Layer::Liquid { id, .. } => {
+
+    //         },
+    //         Layer::Object(_) => todo!(),
+    //         Layer::Empty => Color::from_rgb(0, 0, 0).unwrap()
+    //     }
+    // }
+    pub fn volume(&self) -> f64 {
+        match self {
+            Layer::Liquid { volume, .. } => *volume,
+            Layer::Object(_) => todo!(),
+            Layer::Empty => 0.0,
+        }
+    }
+}
+
+pub enum Transition {
+    MoveDown(Vial),
+    BreakSeed(Vial),
 }
 
 impl Vial {
@@ -90,6 +134,18 @@ impl Vial {
             })
         })
     }
+
+    pub fn transition(&self) -> Option<Transition> {
+        if self.layers.len() == 1 {
+            if matches!(self.layers[0], Layer::Object(Object::Seed)) {
+                let mut s = self.clone();
+                s.layers[0] = Layer::Object(Object::BrokenSeed);
+
+                return Some(Transition::BreakSeed(s));
+            }
+        }
+        None
+    }
 }
 
 impl Default for Vial {
@@ -97,49 +153,9 @@ impl Default for Vial {
         Self {
             layers: vec![],
             volume: 100.0,
-            glass: color_art::Color::from_rgba(255, 255, 255, 0.5).unwrap().into(),
+            glass: color_art::Color::from_rgba(255, 255, 255, 0.5)
+                .unwrap()
+                .into(),
         }
     }
 }
-
-#[derive(Debug, Clone)]
-pub enum Layer {
-    Liquid { id: usize, volume: f64 },
-    Object(Object),
-    Empty,
-}
-
-#[derive(Debug, Clone)]
-pub enum Object {
-    Seed,
-    BrokenSeeds,
-    Creature,
-    Plant,
-}
-
-// pub enum Liquid {
-//     Water,
-//     Oil,
-// }
-
-
-
-impl Layer {
-    // pub fn color(&self) -> Color {
-    //     match self {
-    //         Layer::Liquid { id, .. } => {
-
-    //         },
-    //         Layer::Object(_) => todo!(),
-    //         Layer::Empty => Color::from_rgb(0, 0, 0).unwrap()
-    //     }
-    // }
-    pub fn volume(&self) -> f64 {
-        match self {
-            Layer::Liquid { volume, .. } => *volume,
-            Layer::Object(_) => todo!(),
-            Layer::Empty => 0.0,
-        }
-    }
-}
-
