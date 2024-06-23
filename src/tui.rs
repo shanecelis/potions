@@ -5,7 +5,6 @@ use ratatui::{
 };
 // use std::iter;
 
-
 fn to_color(color: color_art::Color) -> Color {
     Color::Rgb(color.red(), color.green(), color.blue())
 }

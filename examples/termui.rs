@@ -23,11 +23,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use ratatui::{
-    prelude::*,
-    widgets::*,
-    layout::Flex,
-};
+use ratatui::{layout::Flex, prelude::*, widgets::*};
 
 use potions::*;
 
@@ -101,7 +97,7 @@ impl App {
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char('q') => break,
-                        _ => {},
+                        _ => {}
                     }
                     match app.state {
                         State::NextLevel => {
@@ -109,30 +105,41 @@ impl App {
                             if app.level_index >= app.levels.len() {
                                 app.state = State::End;
                             } else {
-                                app.potions = app.levels[app.level_index].potions().into_iter().cloned().collect();
+                                app.potions = app.levels[app.level_index]
+                                    .potions()
+                                    .into_iter()
+                                    .cloned()
+                                    .collect();
                                 app.state = State::Game;
                             }
                         }
                         State::Game => match key.code {
-                            KeyCode::Char(' ') => {
-                                match app.selected {
-                                    Some(i) => {
-                                        if i == app.cursor {
-                                            app.selected = None;
-                                        } else {
-                                            app.state = State::Pouring(app.potions[i].clone(), app.potions[app.cursor].clone(), 0.0);
-                                        }
-                                    },
-                                    None => app.selected = Some(app.cursor)
+                            KeyCode::Char(' ') => match app.selected {
+                                Some(i) => {
+                                    if i == app.cursor {
+                                        app.selected = None;
+                                    } else {
+                                        app.state = State::Pouring(
+                                            app.potions[i].clone(),
+                                            app.potions[app.cursor].clone(),
+                                            0.0,
+                                        );
+                                    }
                                 }
+                                None => app.selected = Some(app.cursor),
                             },
                             // KeyCode::Down | KeyCode::Char('j') => app.y += 1.0,
                             // KeyCode::Up | KeyCode::Char('k') => app.y -= 1.0,
-                            KeyCode::Right | KeyCode::Char('l') => app.cursor = (app.cursor + 1).rem_euclid(app.potions.len()),
-                            KeyCode::Left | KeyCode::Char('h') => app.cursor = (app.cursor + app.potions.len() - 1).rem_euclid(app.potions.len()),
+                            KeyCode::Right | KeyCode::Char('l') => {
+                                app.cursor = (app.cursor + 1).rem_euclid(app.potions.len())
+                            }
+                            KeyCode::Left | KeyCode::Char('h') => {
+                                app.cursor = (app.cursor + app.potions.len() - 1)
+                                    .rem_euclid(app.potions.len())
+                            }
                             _ => {}
-                        }
-                        _ => {},
+                        },
+                        _ => {}
                     }
                 }
             }
@@ -179,10 +186,9 @@ impl App {
                     }
                 }
             }
-            _ => ()
+            _ => (),
         }
     }
-
 
     fn ui(&self, frame: &mut Frame) {
         match self.state {
@@ -193,47 +199,46 @@ impl App {
                 frame.render_widget(Clear, rect);
                 frame.render_widget(
                     Paragraph::new(format!("You passed level {}", self.level_index + 1))
-                        .block(
-                            Block::default().borders(Borders::all()),
-                        )
+                        .block(Block::default().borders(Borders::all()))
                         .alignment(Alignment::Center),
                     rect,
-                    )
+                )
             }
-            _ => ()
+            _ => (),
         }
     }
 
     fn render_game(&self, frame: &mut Frame) {
-        let [title, content] = Layout::vertical([Constraint::Length(1),
-                                         Constraint::Percentage(100)])
-            .areas(frame.size());
+        let [title, content] =
+            Layout::vertical([Constraint::Length(1), Constraint::Percentage(100)])
+                .areas(frame.size());
         let layout = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints(
-                std::iter::repeat(Constraint::Fill(1))
-                         .take(self.potions.len()))
+            .constraints(std::iter::repeat(Constraint::Fill(1)).take(self.potions.len()))
             .margin(5)
             .flex(Flex::Center)
-            .spacing(10)
-            ;
-        frame.render_widget(Paragraph::new(format!("Level {}", self.level_index + 1))
-                            .alignment(Alignment::Center),
-                            title);
+            .spacing(10);
+        frame.render_widget(
+            Paragraph::new(format!("Level {}", self.level_index + 1)).alignment(Alignment::Center),
+            title,
+        );
 
         for (i, rect) in layout.split(content).iter().enumerate() {
             let selected = self.selected.map(|x| x == i).unwrap_or(false);
 
-        let [_gap, potion, footer] = Layout::vertical([
-            Constraint::Min(if selected { 0 } else { 1 }),
-            Constraint::Percentage(100),
-            Constraint::Min(if selected { 2 } else { 1 })])
-                .areas(*rect);
+            let [_gap, potion, footer] = Layout::vertical([
+                Constraint::Min(if selected { 0 } else { 1 }),
+                Constraint::Percentage(100),
+                Constraint::Min(if selected { 2 } else { 1 }),
+            ])
+            .areas(*rect);
             frame.render_widget(self.potions[i].clone(), potion);
 
-            frame.render_widget(Paragraph::new(if self.cursor == i { "/\\" } else { "" })
-                                .alignment(Alignment::Center)
-                                , footer);
+            frame.render_widget(
+                Paragraph::new(if self.cursor == i { "/\\" } else { "" })
+                    .alignment(Alignment::Center),
+                footer,
+            );
         }
     }
 }

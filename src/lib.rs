@@ -1,13 +1,12 @@
-mod tui;
 mod level;
+mod tui;
 mod vial;
 
-pub use level::{Level, levels};
-pub use vial::{Vial, Layer, Object};
+pub use level::{levels, Level};
+pub use vial::{Layer, Object, Vial};
 
 #[cfg(test)]
 mod tests {
-    
 
     #[test]
     fn usize_modulus_substitute() {
@@ -21,7 +20,7 @@ mod tests {
         // But we can't decrement x when it's 0.
         // assert_eq!((x - 1) % count, count - 1); // overflows!
         assert_eq!(x.checked_sub(1), None); // Check for None instead of overflow.
-        // Not what we want:
+                                            // Not what we want:
         assert_eq!(x.saturating_sub(1) % count, 0);
 
         // Acceptable Substitutes

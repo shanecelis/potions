@@ -1,5 +1,5 @@
-use color_art::Color;
 use approx::abs_diff_eq;
+use color_art::Color;
 
 #[derive(Debug, Clone)]
 pub struct Vial {
@@ -27,11 +27,19 @@ impl Vial {
 
     /// Pour self into other potion.
     pub fn pour(&self, other: &Vial, t: f64) -> Option<(Vial, Vial)> {
-        self.top_layer()
-            .and_then(|a| other.top_layer().and_then(|b| {
+        self.top_layer().and_then(|a| {
+            other.top_layer().and_then(|b| {
                 match (a, b) {
-                    (&Layer::Liquid { color: color_a, volume: volume_a },
-                     &Layer::Liquid { color: color_b, volume: volume_b }) =>
+                    (
+                        &Layer::Liquid {
+                            color: color_a,
+                            volume: volume_a,
+                        },
+                        &Layer::Liquid {
+                            color: color_b,
+                            volume: volume_b,
+                        },
+                    ) => {
                         if color_a == color_b {
                             let empty_volume_b = other.volume - other.vol();
                             if empty_volume_b > 0.0 {
@@ -41,13 +49,13 @@ impl Vial {
                                     // We pour some.
                                     *s.layers.last_mut().unwrap() = Layer::Liquid {
                                         volume: volume_a - empty_volume_b * t,
-                                        color: color_a
+                                        color: color_a,
                                     };
                                     s.discard_empties();
 
                                     *o.layers.last_mut().unwrap() = Layer::Liquid {
                                         volume: volume_b + empty_volume_b * t,
-                                        color: color_b
+                                        color: color_b,
                                     };
                                     o.discard_empties();
                                 } else {
@@ -56,7 +64,7 @@ impl Vial {
 
                                     *o.layers.last_mut().unwrap() = Layer::Liquid {
                                         volume: volume_b + volume_a,
-                                        color: color_b
+                                        color: color_b,
                                     };
                                 }
                                 Some((s, o))
@@ -66,10 +74,11 @@ impl Vial {
                         } else {
                             None
                         }
-                    _ => None
+                    }
+                    _ => None,
                 }
-
-            }))
+            })
+        })
     }
 }
 
@@ -95,7 +104,7 @@ impl Layer {
         match self {
             Layer::Liquid { volume, .. } => *volume,
             Layer::Object(_) => todo!(),
-            Layer::Empty => 0.0
+            Layer::Empty => 0.0,
         }
     }
 }
