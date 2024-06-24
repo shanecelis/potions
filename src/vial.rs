@@ -62,10 +62,80 @@ pub enum Transition {
     BreakSeed(Vial),
 }
 
-// pub enum Pour {
-//     LiquidPour(Vial, Vial),
-//     LiquidPour(Vial, Vial),
+pub enum Transfer {
+    Liquid,
+    Object
+}
 
+pub enum TransferError {
+
+
+}
+
+// impl Iterator for Transfer {
+//     type Item = (Vial, Vial);
+//     fn next(&mut self) -> Option<Self::Item> {
+
+
+//     }
+// }
+
+impl Transfer {
+    fn result(&self, a: &Vial, b: &Vial) -> (Vial, Vial) {
+        let mut a = a.clone();
+        let mut b = b.clone();
+        match self {
+            Transfer::Liquid => {
+                let Layer::Liquid { volume: ref mut volume_a, id: id_a } = a.layers.last_mut().unwrap() else { panic!() };
+                if let Some(Layer::Liquid { volume: ref mut volume_b, id: id_b }) = b.layers.last_mut() {
+                    assert_eq!(id_a, id_b);
+                    let empty_volume_b = b.volume - b.vol();
+                    assert!(empty_volume_b > 0.0);
+                    let t = 1.0;
+                    if *volume_a > empty_volume_b * t {
+                        // We pour some.
+                        *volume_a -= empty_volume_b * t;
+                        a.discard_empties();
+
+
+                        *volume_b += empty_volume_b * t;
+                        b.discard_empties();
+                    } else {
+                        // We pour all.
+                        a.layers.pop();
+                        *volume_b += *volume_a * t;
+                    }
+                }            }
+            Transfer::Object => {
+                let Layer::Object(o) = a.layers.last_mut().unwrap() else { panic!(); };
+                match o {
+                    Object::Seed if b.layers.len() == 0 => {
+                        a.layers.pop();
+                        b.layers.push(Layer::Object(Object::BrokenSeed));
+                    }
+                    _ => {
+                        b.layers.push(a.layers.pop().unwrap())
+                    }
+                }
+            }
+            _ => todo!(),
+        };
+        (a, b)
+    }
+}
+//     fn has_lerp(&self) -> bool {
+//         match self {
+//             Transfer::Liquid(_, _) => true,
+//             Transfer::Object(_, _) => true,
+//         }
+//     }
+
+//     fn lerp(&self, t: f64) -> Option<(Vial, Vial)> {
+//         match self {
+//             Transfer::Liquid(a, b) => true,
+//             Transfer::Object(_, _) => true,
+//         }
+//     }
 // }
 
 impl Vial {
@@ -86,22 +156,12 @@ impl Vial {
     }
 
     /// Pour self into other potion.
-    pub fn pour(&self, other: &Vial, t: f64) -> Option<(Vial, Vial)> {
+    pub fn pour(&self, other: &Vial, t: f64) -> Option<Transfer> {
         self.top_layer()
-            .and_then(|a| match a {
+            .and_then(|a| match &a {
                 &Layer::Object(o) => {
-                    match o {
-                        Object::Seed => {
-                            if other.layers.len() == 0 {
-                                let s = self.clone();
-                                let o = other.clone();
-                                s.layers.pop();
-                                o.layers.push(Layer::Object(Object::BrokenSeed));
-                                return Some((s, o));
-                            }
-                        }
-                    }
-                }
+                    Some(Transfer::Object)
+                },
                 &Layer::Liquid {
                     id: color_a,
                     volume: volume_a,
@@ -114,16 +174,16 @@ impl Vial {
                                            volume: volume_b,
                                        }
                                        => {
-                                           if color_a == color_b {
+                                           if *color_a == color_b {
                                                let empty_volume_b = other.volume - other.vol();
                                                if empty_volume_b > 0.0 {
                                                    let mut s = self.clone();
                                                    let mut o = other.clone();
-                                                   if volume_a > empty_volume_b * t {
+                                                   if *volume_a > empty_volume_b * t {
                                                        // We pour some.
                                                        *s.layers.last_mut().unwrap() = Layer::Liquid {
                                                            volume: volume_a - empty_volume_b * t,
-                                                           id: color_a,
+                                                           id: *color_a,
                                                        };
                                                        s.discard_empties();
 
@@ -141,7 +201,7 @@ impl Vial {
                                                            id: color_b,
                                                        };
                                                    }
-                                                   return Some((s, o))
+                                                   return Some(Transfer::Liquid(s, o))
                                                } else {
                                                    None
                                                }
@@ -151,9 +211,9 @@ impl Vial {
                                        }
                                        _ => None,
                                    }
-                    )
-            });
-            None
+                         ),
+                _ => todo!()
+            })
     }
 
     pub fn transition(&self) -> Option<Transition> {

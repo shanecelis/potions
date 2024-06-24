@@ -34,6 +34,7 @@ struct App {
 enum State {
     Game,
     NextLevel,
+    Transfer(Transfer),
     Pouring(Vial, Vial, f64),
     End,
 }
@@ -143,7 +144,7 @@ impl App {
         self.tick_count += 1;
         match self.state {
             State::Pouring(ref pour_from, ref pour_into, ref mut t) => {
-                if let Some((a, b)) = pour_from.pour(pour_into, *t) {
+                if let Some(Transfer::Liquid(a, b)) = pour_from.pour(pour_into, *t) {
                     self.potions[self.selected.unwrap()] = a;
                     self.potions[self.cursor] = b;
                 }
