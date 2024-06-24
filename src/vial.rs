@@ -62,6 +62,12 @@ pub enum Transition {
     BreakSeed(Vial),
 }
 
+// pub enum Pour {
+//     LiquidPour(Vial, Vial),
+//     LiquidPour(Vial, Vial),
+
+// }
+
 impl Vial {
     pub fn top_layer(&self) -> Option<&Layer> {
         self.layers.last()
@@ -81,58 +87,73 @@ impl Vial {
 
     /// Pour self into other potion.
     pub fn pour(&self, other: &Vial, t: f64) -> Option<(Vial, Vial)> {
-        self.top_layer().and_then(|a| {
-            other.top_layer().and_then(|b| {
-                match (a, b) {
-                    (
-                        &Layer::Liquid {
-                            id: color_a,
-                            volume: volume_a,
-                        },
-                        &Layer::Liquid {
-                            id: color_b,
-                            volume: volume_b,
-                        },
-                    ) => {
-                        if color_a == color_b {
-                            let empty_volume_b = other.volume - other.vol();
-                            if empty_volume_b > 0.0 {
-                                let mut s = self.clone();
-                                let mut o = other.clone();
-                                if volume_a > empty_volume_b * t {
-                                    // We pour some.
-                                    *s.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_a - empty_volume_b * t,
-                                        id: color_a,
-                                    };
-                                    s.discard_empties();
-
-                                    *o.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_b + empty_volume_b * t,
-                                        id: color_b,
-                                    };
-                                    o.discard_empties();
-                                } else {
-                                    // We pour all.
-                                    s.layers.pop();
-
-                                    *o.layers.last_mut().unwrap() = Layer::Liquid {
-                                        volume: volume_b + volume_a,
-                                        id: color_b,
-                                    };
-                                }
-                                Some((s, o))
-                            } else {
-                                None
+        self.top_layer()
+            .and_then(|a| match a {
+                &Layer::Object(o) => {
+                    match o {
+                        Object::Seed => {
+                            if other.layers.len() == 0 {
+                                let s = self.clone();
+                                let o = other.clone();
+                                s.layers.pop();
+                                o.layers.push(Layer::Object(Object::BrokenSeed));
+                                return Some((s, o));
                             }
-                        } else {
-                            None
                         }
                     }
-                    _ => None,
                 }
-            })
-        })
+                &Layer::Liquid {
+                    id: color_a,
+                    volume: volume_a,
+                } =>
+                    other.top_layer()
+                         .and_then(|b|
+                                   match b {
+                                       &Layer::Liquid {
+                                           id: color_b,
+                                           volume: volume_b,
+                                       }
+                                       => {
+                                           if color_a == color_b {
+                                               let empty_volume_b = other.volume - other.vol();
+                                               if empty_volume_b > 0.0 {
+                                                   let mut s = self.clone();
+                                                   let mut o = other.clone();
+                                                   if volume_a > empty_volume_b * t {
+                                                       // We pour some.
+                                                       *s.layers.last_mut().unwrap() = Layer::Liquid {
+                                                           volume: volume_a - empty_volume_b * t,
+                                                           id: color_a,
+                                                       };
+                                                       s.discard_empties();
+
+                                                       *o.layers.last_mut().unwrap() = Layer::Liquid {
+                                                           volume: volume_b + empty_volume_b * t,
+                                                           id: color_b,
+                                                       };
+                                                       o.discard_empties();
+                                                   } else {
+                                                       // We pour all.
+                                                       s.layers.pop();
+
+                                                       *o.layers.last_mut().unwrap() = Layer::Liquid {
+                                                           volume: volume_b + volume_a,
+                                                           id: color_b,
+                                                       };
+                                                   }
+                                                   return Some((s, o))
+                                               } else {
+                                                   None
+                                               }
+                                           } else {
+                                               None
+                                           }
+                                       }
+                                       _ => None,
+                                   }
+                    )
+            });
+            None
     }
 
     pub fn transition(&self) -> Option<Transition> {
@@ -140,7 +161,6 @@ impl Vial {
             if matches!(self.layers[0], Layer::Object(Object::Seed)) {
                 let mut s = self.clone();
                 s.layers[0] = Layer::Object(Object::BrokenSeed);
-
                 return Some(Transition::BreakSeed(s));
             }
         }

@@ -37,17 +37,19 @@ pub trait Level {
 pub struct UnmixLevel {
     palette: Palette,
     potions: Vec<Vial>,
+    goal: Goal,
 }
 
 impl Default for UnmixLevel {
     fn default() -> Self {
         Self {
             palette: Palette::new(vec![
-                color_art::Color::from_rgb(255, 0, 0).unwrap(),
-                color_art::Color::from_rgb(0, 255, 0).unwrap(),
-                color_art::Color::from_rgb(0, 0, 255).unwrap(),
+                rgb(255, 0, 0),
+                rgb(0, 255, 0),
+                rgb(0, 0, 255),
             ]),
             potions: vec![],
+            goal: Goal::Unmix,
         }
     }
 }
@@ -84,12 +86,14 @@ impl UnmixLevel {
         Self {
             palette: Palette::new(colors),
             potions: vials,
+            goal: Goal::Unmix,
         }
     }
 }
 
 pub enum Goal {
     Unmix,
+    BreakSeed,
 }
 
 // #[derive(Debug, Clone)]
@@ -103,6 +107,7 @@ impl Goal {
     fn is_complete(&self, potions: &[Vial]) -> bool {
         match self {
             Goal::Unmix => potions.iter().all(|p| p.layers.len() <= 1),
+            Goal::BreakSeed => potions.iter().any(|p| p.layers.iter().any(|l| matches!(l, Layer::Object(Object::BrokenSeed)))),
         }
     }
 }
@@ -117,13 +122,15 @@ impl Level for UnmixLevel {
     }
 
     fn is_complete(&self, potions: &[Vial]) -> bool {
-        potions.iter().all(|p| p.layers.len() <= 1)
+        self.goal.is_complete(potions)
     }
 }
 
 pub fn levels() -> Vec<Box<dyn Level>> {
     vec![
-        Box::new(UnmixLevel::new(vec![
+        Box::new(UnmixLevel {
+            goal: Goal::BreakSeed,
+            potions: vec![
             Vial {
                 layers: vec![
                     Layer::Object(Object::Seed),
@@ -131,11 +138,12 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                 ..Default::default()
             },
             Vial {
-                layers: vec![
-                ],
+                layers: vec![],
                 ..Default::default()
             },
-        ])),
+                ],
+                ..Default::default()
+             }),
         Box::new(UnmixLevel::new(vec![
             Vial {
                 layers: vec![
