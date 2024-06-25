@@ -34,8 +34,8 @@ struct App {
 enum State {
     Game,
     NextLevel,
-    Transfer(Transfer),
-    Pouring(Vial, Vial, f64),
+    Transfer(Transfer, f64),
+    // Pouring(Vial, Vial, f64),
     End,
 }
 
@@ -107,11 +107,14 @@ impl App {
                                     if i == app.cursor {
                                         app.selected = None;
                                     } else {
-                                        app.state = State::Pouring(
-                                            app.potions[i].clone(),
-                                            app.potions[app.cursor].clone(),
-                                            0.0,
-                                        );
+                                        if let Some(transfer) = app.potions[i].pour(&app.potions[app.cursor]) {
+                                            app.state = State::Transfer(transfer, 0.0);
+                                        }
+                                        //     State::Pouring(
+                                        //     app.potions[i].clone(),
+                                        //     app.potions[app.cursor].clone(),
+                                        //     0.0,
+                                        // );
                                     }
                                 }
                                 None => app.selected = Some(app.cursor),
@@ -143,28 +146,42 @@ impl App {
     fn on_tick(&mut self) {
         self.tick_count += 1;
         match self.state {
-            State::Pouring(ref pour_from, ref pour_into, ref mut t) => {
-                if let Some(Transfer::Liquid(a, b)) = pour_from.pour(pour_into, *t) {
-                    self.potions[self.selected.unwrap()] = a;
-                    self.potions[self.cursor] = b;
-                }
-                *t += 0.1;
-                if *t >= 1.0 {
-                    self.selected = None;
-                    if self.levels[self.level_index].is_complete(&self.potions) {
-                        self.state = State::NextLevel;
-                    } else {
-                        self.state = State::Game;
+            State::Transfer(ref transfer, ref mut t) => {
+                match transfer {
+                    Transfer::Liquid(ref liquid_transfer) => {
+                        let pour_from = &self.potions[self.selected.unwrap()];
+                        let pour_into = &self.potions[self.cursor];
+                        if let Some((a, b, ())) = liquid_transfer.lerp(pour_from, pour_into, *t) {
+                            self.potions[self.selected.unwrap()] = a;
+                            self.potions[self.cursor] = b;
+                        } else {
+                            *t = 2.0;
+                        }
+                        *t += 0.1;
+                        if *t >= 1.0 {
+                            self.selected = None;
+                            if self.levels[self.level_index].is_complete(&self.potions) {
+                                self.state = State::NextLevel;
+                            } else {
+                                self.state = State::Game;
+                            }
+                        }
+                    }
+                    Transfer::Object(ref object_transfer) => {
+
                     }
                 }
             }
-            _ => (),
+            State::Game => (),
+            State::NextLevel => (),
+            State::End => (),
+            _ => todo!("{:?}", self.state),
         }
     }
 
     fn ui(&self, frame: &mut Frame) {
         match self.state {
-            State::Game | State::Pouring(_, _, _) => self.render_game(frame),
+            State::Game | State::Transfer(_, _) => self.render_game(frame),
             State::NextLevel => {
                 self.render_game(frame);
                 let rect = centered_rect(frame.size(), 35, 35);
@@ -187,6 +204,7 @@ impl App {
                     rect,
                 )
             }
+            _ => todo!(),
         }
     }
 

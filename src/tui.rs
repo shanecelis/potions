@@ -54,12 +54,15 @@ impl<'a> Widget for VialWidget<'a> {
                 },
                 Layer::Object(o) => match o {
                     Object::Seed => {
-                        buf.set_string(
-                            area.x + area.width / 2,
-                            area.y + area.height - 2,
-                            " ".repeat(2 as usize),
-                            border,
-                        );
+                        let size = 4;
+                        for j in 0..size/2 {
+                            buf.set_string(
+                                area.x + area.width / 2 - size / 2,
+                                area.y + area.height - 2 - j,
+                                " ".repeat(size as usize),
+                                border,
+                            );
+                        }
                     },
                     _ => todo!(),
                 }
