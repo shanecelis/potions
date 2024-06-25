@@ -2,6 +2,7 @@ use super::*;
 use derived_deref::{Deref, DerefMut};
 use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
 use std::collections::BinaryHeap;
+use bevy_math::Vec2;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct Palette(Vec<Color>);
@@ -21,7 +22,7 @@ impl Palette {
 
     pub fn color(&self, layer: &Layer) -> Color {
         match layer {
-            Layer::Object { .. } => rgb(255, 255, 255),
+            // Layer::Object { .. } => rgb(255, 255, 255),
             Layer::Liquid { id, .. } => self.0[*id].clone(),
             _ => todo!()
         }
@@ -107,7 +108,8 @@ impl Goal {
     fn is_complete(&self, potions: &[Vial]) -> bool {
         match self {
             Goal::Unmix => potions.iter().all(|p| p.layers.len() <= 1),
-            Goal::BreakSeed => potions.iter().any(|p| p.layers.iter().any(|l| matches!(l, Layer::Object { obj: Object::BrokenSeed, .. }))),
+            Goal::BreakSeed => potions.iter().all(|p| p.objects.iter().filter(|o| matches!(o.kind, ObjectKind::Seed)).map(|o| o.size)
+                                                  .all(|s| s <= 1))
         }
     }
 }
@@ -132,9 +134,11 @@ pub fn levels() -> Vec<Box<dyn Level>> {
             goal: Goal::BreakSeed,
             potions: vec![
             Vial {
-                layers: vec![
-                    Layer::Object { obj: Object::Seed, pos: None } ,
-                ],
+                objects: vec![ Object {
+                    kind: ObjectKind::Seed,
+                    pos: Vec2::new(0.0, 0.0),
+                    size: 4,
+                }],
                 ..Default::default()
             },
             Vial {

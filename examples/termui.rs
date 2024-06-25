@@ -165,7 +165,16 @@ impl App {
                     }
                 }
             }
-            State::Game => (),
+            State::Game => {
+                for potion in &mut self.potions {
+                    match potion.transition() {
+                        Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) => {
+                            *potion = vial;
+                        },
+                        None => (),
+                    }
+                }
+            },
             State::NextLevel => (),
             State::End => (),
             _ => todo!("{:?}", self.state),

@@ -1,4 +1,4 @@
-use super::{Layer, Palette, Vial, Object};
+use super::{Layer, Palette, Vial, Object, ObjectKind};
 use ratatui::prelude::*;
 
 impl From<crate::Color> for Color {
@@ -16,7 +16,7 @@ impl<'a> Widget for VialWidget<'a> {
         let VialWidget(vial, palette) = self;
         let border = Style::new().bg(vial.glass.clone().into());
         // let view_volume = (area.width - 2) * (area.height - 1);
-        let volume_per_row = vial.volume / (area.height - 1) as f64;
+        let volume_per_row = vial.max_volume / (area.height - 1) as f64;
 
         if area.height > 1 {
             // Draw bottom.
@@ -51,21 +51,22 @@ impl<'a> Widget for VialWidget<'a> {
                     slop = volume;
                     // dbg!(volume);
                     // dbg!(slop);
-                },
-                Layer::Object { obj: o, pos } => match o {
-                    Object::Seed => {
-                        let size = 4;
-                        for j in 0..size/2 {
-                            buf.set_string(
-                                area.x + area.width / 2 - size / 2,
-                                area.y + area.height - 2 - j,
-                                " ".repeat(size as usize),
-                                border,
-                            );
-                        }
-                    },
-                    _ => todo!(),
                 }
+            }
+        }
+        for object in &vial.objects {
+            match object.kind {
+                ObjectKind::Seed => {
+                    let size = object.size as u16;
+                    for j in 0..size/2 {
+                        buf.set_string(
+                            area.x + area.width / 2 - size / 2,
+                            area.y + area.height - 2 - j,
+                            " ".repeat(size as usize),
+                            border,
+                        );
+                    }
+                },
                 _ => todo!(),
             }
         }
