@@ -147,28 +147,21 @@ impl App {
         self.tick_count += 1;
         match self.state {
             State::Transfer(ref transfer, ref mut t) => {
-                match transfer {
-                    Transfer::Liquid(ref liquid_transfer) => {
-                        let pour_from = &self.potions[self.selected.unwrap()];
-                        let pour_into = &self.potions[self.cursor];
-                        if let Some((a, b, ())) = liquid_transfer.lerp(pour_from, pour_into, *t) {
-                            self.potions[self.selected.unwrap()] = a;
-                            self.potions[self.cursor] = b;
-                        } else {
-                            *t = 2.0;
-                        }
-                        *t += 0.1;
-                        if *t >= 1.0 {
-                            self.selected = None;
-                            if self.levels[self.level_index].is_complete(&self.potions) {
-                                self.state = State::NextLevel;
-                            } else {
-                                self.state = State::Game;
-                            }
-                        }
-                    }
-                    Transfer::Object(ref object_transfer) => {
-
+                let pour_from = &self.potions[self.selected.unwrap()];
+                let pour_into = &self.potions[self.cursor];
+                if let Some((a, b)) = transfer.lerp(pour_from, pour_into, *t) {
+                    self.potions[self.selected.unwrap()] = a;
+                    self.potions[self.cursor] = b;
+                } else {
+                    *t = 2.0;
+                }
+                *t += 0.1;
+                if *t >= 1.0 {
+                    self.selected = None;
+                    if self.levels[self.level_index].is_complete(&self.potions) {
+                        self.state = State::NextLevel;
+                    } else {
+                        self.state = State::Game;
                     }
                 }
             }

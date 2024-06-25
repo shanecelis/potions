@@ -21,7 +21,7 @@ impl Palette {
 
     pub fn color(&self, layer: &Layer) -> Color {
         match layer {
-            Layer::Object(_) => rgb(255, 255, 255),
+            Layer::Object { .. } => rgb(255, 255, 255),
             Layer::Liquid { id, .. } => self.0[*id].clone(),
             _ => todo!()
         }
@@ -107,7 +107,7 @@ impl Goal {
     fn is_complete(&self, potions: &[Vial]) -> bool {
         match self {
             Goal::Unmix => potions.iter().all(|p| p.layers.len() <= 1),
-            Goal::BreakSeed => potions.iter().any(|p| p.layers.iter().any(|l| matches!(l, Layer::Object(Object::BrokenSeed)))),
+            Goal::BreakSeed => potions.iter().any(|p| p.layers.iter().any(|l| matches!(l, Layer::Object { obj: Object::BrokenSeed, .. }))),
         }
     }
 }
@@ -133,7 +133,7 @@ pub fn levels() -> Vec<Box<dyn Level>> {
             potions: vec![
             Vial {
                 layers: vec![
-                    Layer::Object(Object::Seed),
+                    Layer::Object { obj: Object::Seed, pos: None } ,
                 ],
                 ..Default::default()
             },

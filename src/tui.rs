@@ -52,7 +52,7 @@ impl<'a> Widget for VialWidget<'a> {
                     // dbg!(volume);
                     // dbg!(slop);
                 },
-                Layer::Object(o) => match o {
+                Layer::Object { obj: o, pos } => match o {
                     Object::Seed => {
                         let size = 4;
                         for j in 0..size/2 {
