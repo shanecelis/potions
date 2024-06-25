@@ -134,11 +134,34 @@ pub fn levels() -> Vec<Box<dyn Level>> {
             goal: Goal::BreakSeed,
             potions: vec![
             Vial {
-                objects: vec![ Object {
-                    kind: ObjectKind::Seed,
-                    pos: Vec2::new(0.0, 0.0),
-                    size: 4,
-                }],
+                objects: vec![
+                    Object {
+                        kind: ObjectKind::Seed,
+                        pos: Vec2::new(0.0, 0.0),
+                        size: 1,
+                    },
+                    Object {
+                        kind: ObjectKind::Seed,
+                        pos: Vec2::new(3.0, 0.0),
+                        size: 2,
+                    },
+                    Object {
+                        kind: ObjectKind::Seed,
+                        pos: Vec2::new(7.0, 0.0),
+                        size: 3,
+                    },
+
+                    Object {
+                        kind: ObjectKind::Seed,
+                        pos: Vec2::new(11.0, 0.0),
+                        size: 4,
+                    },
+                    Object {
+                        kind: ObjectKind::Seed,
+                        pos: Vec2::new(17.0, 0.0),
+                        size: 5,
+                    },
+                ],
                 ..Default::default()
             },
             Vial {

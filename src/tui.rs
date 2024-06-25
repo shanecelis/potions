@@ -58,10 +58,10 @@ impl<'a> Widget for VialWidget<'a> {
             match object.kind {
                 ObjectKind::Seed => {
                     let size = object.size as u16;
-                    for j in 0..size/2 {
+                    for j in 0..(size / 2).max(1) {
                         buf.set_string(
-                            area.x + area.width / 2 - size / 2,
-                            area.y + area.height - 2 - j,
+                            area.x + (size / 2).max(1) + object.pos.x as u16,
+                            area.y + area.height - 2 - j + object.pos.y as u16,
                             " ".repeat(size as usize),
                             border,
                         );
