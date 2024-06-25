@@ -1,8 +1,8 @@
 use super::*;
+use bevy_math::Vec2;
 use derived_deref::{Deref, DerefMut};
 use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
 use std::collections::BinaryHeap;
-use bevy_math::Vec2;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct Palette(Vec<Color>);
@@ -22,9 +22,7 @@ impl Palette {
 
     pub fn color(&self, layer: &Layer) -> Color {
         match layer {
-            // Layer::Object { .. } => rgb(255, 255, 255),
             Layer::Liquid { id, .. } => self.0[*id].clone(),
-            _ => todo!()
         }
     }
 }
@@ -38,11 +36,7 @@ pub struct Level {
 impl Default for Level {
     fn default() -> Self {
         Self {
-            palette: Palette::new(vec![
-                rgb(255, 0, 0),
-                rgb(0, 255, 0),
-                rgb(0, 0, 255),
-            ]),
+            palette: Palette::new(vec![rgb(255, 0, 0), rgb(0, 255, 0), rgb(0, 0, 255)]),
             potions: vec![],
             goal: Goal::Unmix,
         }
@@ -102,8 +96,13 @@ impl Goal {
     pub fn is_complete(&self, potions: &[Vial]) -> bool {
         match self {
             Goal::Unmix => potions.iter().all(|p| p.layers.len() <= 1),
-            Goal::BreakSeed => potions.iter().all(|p| p.objects.iter().filter(|o| matches!(o.kind, ObjectKind::Seed)).map(|o| o.size)
-                                                  .all(|s| s <= 1))
+            Goal::BreakSeed => potions.iter().all(|p| {
+                p.objects
+                    .iter()
+                    .filter(|o| matches!(o.kind, ObjectKind::Seed))
+                    .map(|o| o.size)
+                    .all(|s| s <= 1)
+            }),
         }
     }
 }
@@ -113,147 +112,147 @@ pub fn levels() -> Vec<Level> {
         Level {
             goal: Goal::BreakSeed,
             potions: vec![
-            Vial {
-                objects: vec![
-                    Object {
-                        kind: ObjectKind::Seed,
-                        pos: Vec2::new(0.0, 0.0),
-                        size: 1,
-                    },
-                    Object {
-                        kind: ObjectKind::Seed,
-                        pos: Vec2::new(3.0, 0.0),
-                        size: 2,
-                    },
-                    Object {
-                        kind: ObjectKind::Seed,
-                        pos: Vec2::new(7.0, 0.0),
-                        size: 3,
-                    },
-
-                    Object {
-                        kind: ObjectKind::Seed,
-                        pos: Vec2::new(11.0, 0.0),
-                        size: 4,
-                    },
-                    Object {
-                        kind: ObjectKind::Seed,
-                        pos: Vec2::new(17.0, 0.0),
-                        size: 5,
-                    },
-                ],
-                ..Default::default()
-            },
-            Vial {
-                layers: vec![],
-                ..Default::default()
-            },
-                ],
-                ..Default::default()
-        },
-        Level {
-            potions: vec![
-            Vial {
-                layers: vec![
-                    Layer::Liquid {
-                        id: 0,
-                        volume: 50.0,
-                    },
-                    Layer::Liquid {
-                        id: 1,
-                        volume: 50.0,
-                    },
-                ],
-                ..Default::default()
-            },
-            Vial {
-                layers: vec![Layer::Liquid {
-                    id: 1,
-                    volume: 50.0,
-                }],
-                ..Default::default()
-            },
-        ],
+                Vial {
+                    objects: vec![
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(0.0, 0.0),
+                            size: 1,
+                        },
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(3.0, 0.0),
+                            size: 2,
+                        },
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(7.0, 0.0),
+                            size: 3,
+                        },
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(11.0, 0.0),
+                            size: 4,
+                        },
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(17.0, 0.0),
+                            size: 5,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![],
+                    ..Default::default()
+                },
+            ],
             ..Default::default()
         },
-        Level { potions: vec![
-            Vial {
-                layers: vec![
-                    Layer::Liquid {
-                        id: 0,
-                        volume: 50.0,
-                    },
-                    Layer::Liquid {
+        Level {
+            potions: vec![
+                Vial {
+                    layers: vec![
+                        Layer::Liquid {
+                            id: 0,
+                            volume: 50.0,
+                        },
+                        Layer::Liquid {
+                            id: 1,
+                            volume: 50.0,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![Layer::Liquid {
                         id: 1,
                         volume: 50.0,
-                    },
-                ],
-                ..Default::default()
-            },
-            Vial {
-                layers: vec![
-                    Layer::Liquid {
-                        id: 1,
-                        volume: 50.0,
-                    },
-                    Layer::Liquid {
-                        id: 2,
-                        volume: 25.0,
-                    },
-                ],
-                ..Default::default()
-            },
-            Vial {
-                layers: vec![Layer::Liquid {
-                    id: 2,
-                    volume: 50.0,
-                }],
-                ..Default::default()
-            },
-        ],
-                ..Default::default()
+                    }],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
         },
         Level {
             potions: vec![
-            Vial {
-                layers: vec![
-                    Layer::Liquid {
-                        id: 0,
-                        volume: 50.0,
-                    },
-                    Layer::Liquid {
-                        id: 1,
-                        volume: 25.0,
-                    },
-                    Layer::Liquid {
+                Vial {
+                    layers: vec![
+                        Layer::Liquid {
+                            id: 0,
+                            volume: 50.0,
+                        },
+                        Layer::Liquid {
+                            id: 1,
+                            volume: 50.0,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![
+                        Layer::Liquid {
+                            id: 1,
+                            volume: 50.0,
+                        },
+                        Layer::Liquid {
+                            id: 2,
+                            volume: 25.0,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![Layer::Liquid {
                         id: 2,
-                        volume: 25.0,
-                    },
-                ],
-                ..Default::default()
-            },
-            Vial {
-                layers: vec![
-                    Layer::Liquid {
-                        id: 1,
                         volume: 50.0,
-                    },
-                    Layer::Liquid {
+                    }],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        },
+        Level {
+            potions: vec![
+                Vial {
+                    layers: vec![
+                        Layer::Liquid {
+                            id: 0,
+                            volume: 50.0,
+                        },
+                        Layer::Liquid {
+                            id: 1,
+                            volume: 25.0,
+                        },
+                        Layer::Liquid {
+                            id: 2,
+                            volume: 25.0,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![
+                        Layer::Liquid {
+                            id: 1,
+                            volume: 50.0,
+                        },
+                        Layer::Liquid {
+                            id: 2,
+                            volume: 25.0,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![Layer::Liquid {
                         id: 2,
-                        volume: 25.0,
-                    },
-                ],
-                ..Default::default()
-            },
-            Vial {
-                layers: vec![Layer::Liquid {
-                    id: 2,
-                    volume: 50.0,
-                }],
-                ..Default::default()
-            },
-        ],
-                ..Default::default()
+                        volume: 50.0,
+                    }],
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
         },
     ]
 }

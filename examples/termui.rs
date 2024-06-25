@@ -107,7 +107,9 @@ impl App {
                                     if i == app.cursor {
                                         app.selected = None;
                                     } else {
-                                        if let Some(transfer) = app.potions[i].pour(&app.potions[app.cursor]) {
+                                        if let Some(transfer) =
+                                            app.potions[i].pour(&app.potions[app.cursor])
+                                        {
                                             app.state = State::Transfer(transfer, 0.0);
                                         }
                                         //     State::Pouring(
@@ -128,7 +130,7 @@ impl App {
                             }
                             _ => {}
                         },
-                        State::End => {},
+                        State::End => {}
                         _ => {}
                     }
                 }
@@ -158,7 +160,10 @@ impl App {
                 *t += 0.1;
                 if *t >= 1.0 {
                     self.selected = None;
-                    if self.levels[self.level_index].goal.is_complete(&self.potions) {
+                    if self.levels[self.level_index]
+                        .goal
+                        .is_complete(&self.potions)
+                    {
                         self.state = State::NextLevel;
                     } else {
                         self.state = State::Game;
@@ -170,11 +175,11 @@ impl App {
                     match potion.transition() {
                         Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) => {
                             *potion = vial;
-                        },
+                        }
                         None => (),
                     }
                 }
-            },
+            }
             State::NextLevel => (),
             State::End => (),
             _ => todo!("{:?}", self.state),

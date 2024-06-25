@@ -1,4 +1,4 @@
-use super::{Layer, Palette, Vial, Object, ObjectKind};
+use super::{Layer, Object, ObjectKind, Palette, Vial};
 use ratatui::prelude::*;
 
 impl From<crate::Color> for Color {
@@ -66,7 +66,7 @@ impl<'a> Widget for VialWidget<'a> {
                             border,
                         );
                     }
-                },
+                }
                 _ => todo!(),
             }
         }

@@ -1,7 +1,7 @@
-use std::cmp::Ordering;
-use std::collections::BinaryHeap;
 use approx::abs_diff_eq;
 use derived_deref::{Deref, DerefMut};
+use std::cmp::Ordering;
+use std::collections::BinaryHeap;
 // use color_art::Color;
 use bevy_math::{IVec2, Vec2};
 
@@ -23,7 +23,6 @@ pub struct Vial {
     pub max_volume: f64,
     pub glass: Color,
     pub size: Vec2,
-
 }
 
 impl Default for Vial {
@@ -64,7 +63,11 @@ impl<'a> PartialOrd for ByHeight<'a> {
 
 impl<'a> Ord for ByHeight<'a> {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.pos.y.partial_cmp(&other.pos.y).or(abs_diff_eq!(self.pos.y, other.pos.y, epsilon = 0.1).then_some(Ordering::Equal)).unwrap_or(Ordering::Less)
+        self.pos
+            .y
+            .partial_cmp(&other.pos.y)
+            .or(abs_diff_eq!(self.pos.y, other.pos.y, epsilon = 0.1).then_some(Ordering::Equal))
+            .unwrap_or(Ordering::Less)
     }
 }
 
@@ -74,7 +77,7 @@ impl<'a> PartialEq for ByHeight<'a> {
     }
 }
 
-impl<'a> Eq for ByHeight<'a> { }
+impl<'a> Eq for ByHeight<'a> {}
 
 #[derive(Debug, Clone)]
 pub enum ObjectKind {
@@ -115,11 +118,10 @@ pub enum Transition {
 #[derive(Debug, Clone)]
 pub enum Transfer {
     Liquid,
-    Object
+    Object,
 }
 
-pub enum TransferError {
-}
+pub enum TransferError {}
 
 pub trait Lerp<T> {
     // type Data;
@@ -143,15 +145,29 @@ impl Lerp<Vial> for Transfer {
         match self {
             Transfer::Liquid => {
                 let top_layer_a = a.layers.len() - 1;
-                let mut objects_top_a: Vec<usize> = a.objects.iter().enumerate().filter_map(|(i, o)|
-                                                                            match a.in_layer(o.pos) {
-                                                                                Some(VialLoc::Top) => Some(i),
-                                                                                Some(VialLoc::Layer(l)) if l == top_layer_a => Some(i),
-                                                                                _ => None,
-                                                                            }).collect();
-                let Layer::Liquid { volume: ref mut volume_a, id: id_a } = a.layers.last_mut().unwrap() else { panic!() };
+                let mut objects_top_a: Vec<usize> = a
+                    .objects
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, o)| match a.in_layer(o.pos) {
+                        Some(VialLoc::Top) => Some(i),
+                        Some(VialLoc::Layer(l)) if l == top_layer_a => Some(i),
+                        _ => None,
+                    })
+                    .collect();
+                let Layer::Liquid {
+                    volume: ref mut volume_a,
+                    id: id_a,
+                } = a.layers.last_mut().unwrap()
+                else {
+                    panic!()
+                };
                 let total_volume_b = b.vol();
-                if let Some(Layer::Liquid { volume: ref mut volume_b, id: id_b }) = b.layers.last_mut() {
+                if let Some(Layer::Liquid {
+                    volume: ref mut volume_b,
+                    id: id_b,
+                }) = b.layers.last_mut()
+                {
                     assert_eq!(id_a, id_b);
                     let empty_volume_b = b.max_volume - total_volume_b;
                     assert!(empty_volume_b > 0.0);
@@ -188,8 +204,15 @@ impl Lerp<Vial> for Transfer {
                 if a.objects.len() <= 0 {
                     return None;
                 }
-                let mut heap: BinaryHeap<ByHeight> = a.objects.iter().enumerate().map(|(i, o)| ByHeight(i, o)).collect();
-                let Some(ByHeight(top_index, top)) = heap.pop() else { panic!() };
+                let mut heap: BinaryHeap<ByHeight> = a
+                    .objects
+                    .iter()
+                    .enumerate()
+                    .map(|(i, o)| ByHeight(i, o))
+                    .collect();
+                let Some(ByHeight(top_index, top)) = heap.pop() else {
+                    panic!()
+                };
                 let mut transfers = vec![];
                 transfers.push(top_index);
                 while let Some(ByHeight(i, obj)) = heap.pop() {
@@ -229,7 +252,6 @@ enum VialLoc {
 }
 
 impl Vial {
-
     // pub fn objects_in_layer(&self, layer_index: usize) -> Vec<usize> { //impl Iterator<Item = usize> {
     //     let height_per_vol = self.size.y / self.max_volume;
     //     if layer_index == self.layers.len() {
@@ -271,46 +293,50 @@ impl Vial {
 
     /// Pour self into other potion.
     pub fn pour(&self, other: &Vial) -> Option<Transfer> {
-        self.layers.last()
+        self.layers
+            .last()
             .and_then(|a| match &a {
                 &Layer::Liquid {
                     id: color_a,
-                    volume: volume_a,
-                } =>
-                    other.layers.last()
-                         .and_then(|b|
-                                   match b {
-                                       &Layer::Liquid {
-                                           id: color_b,
-                                           volume: volume_b,
-                                       }
-                                       => {
-                                           if *color_a == color_b {
-                                               let empty_volume_b = other.max_volume - other.vol();
-                                               if empty_volume_b > 0.0 {
-                                                   return Some(Transfer::Liquid)
-                                               } else {
-                                                   None
-                                               }
-                                           } else {
-                                               None
-                                           }
-                                       }
-                                       _ => None,
-                                   }
-                         ),
-                _ => todo!()
-            }).or((self.objects.len() > 0).then_some(Transfer::Object))
+                    ..
+                    // volume: volume_a,
+                } => other.layers.last().and_then(|b| match b {
+                    &Layer::Liquid {
+                        id: color_b,
+                        ..
+                        // volume: volume_b,
+                    } => {
+                        if *color_a == color_b {
+                            let empty_volume_b = other.max_volume - other.vol();
+                            if empty_volume_b > 0.0 {
+                                return Some(Transfer::Liquid);
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    // _ => None,
+                }),
+                // _ => todo!(),
+            })
+            .or((self.objects.len() > 0).then_some(Transfer::Object))
     }
 
     pub fn transition(&self) -> Option<Transition> {
         if self.layers.len() == 0 {
             let mut a = self.clone();
             let mut accum = vec![];
-            for obj in a.objects.iter_mut().filter(|o| o.pos.y > a.size.y && o.size > 1) {
+            for obj in a
+                .objects
+                .iter_mut()
+                .filter(|o| o.pos.y > a.size.y && o.size > 1)
+            {
                 let smaller_count = 3;
                 obj.size = obj.size.saturating_sub(1);
                 for i in 0..smaller_count {
+                    // XXX: Change where they are
                     accum.push(obj.clone());
                 }
             }
@@ -327,4 +353,3 @@ impl Vial {
         }
     }
 }
-

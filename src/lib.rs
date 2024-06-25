@@ -3,7 +3,7 @@ pub mod tui;
 mod vial;
 
 pub use level::{levels, Level, Palette};
-pub use vial::{Color, Layer, Object, Vial, Transfer, Transition, Lerp, ObjectKind};
+pub use vial::{Color, Layer, Lerp, Object, ObjectKind, Transfer, Transition, Vial};
 
 #[cfg(test)]
 mod tests {
