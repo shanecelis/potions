@@ -25,7 +25,7 @@ struct App {
     potions: Vec<Vial>,
     cursor: usize,
     selected: Option<usize>,
-    levels: Vec<Box<dyn Level>>,
+    levels: Vec<Level>,
     level_index: usize,
     state: State,
 }
@@ -67,7 +67,7 @@ impl App {
             cursor: 0,
             selected: None,
             level_index: 0,
-            potions: levels[0].potions().iter().cloned().collect(),
+            potions: levels[0].potions.iter().cloned().collect(),
             levels,
             state: State::Game,
         }
@@ -94,8 +94,8 @@ impl App {
                             } else {
                                 app.level_index += 1;
                                 app.potions = app.levels[app.level_index]
-                                    .potions()
-                                    .into_iter()
+                                    .potions
+                                    .iter()
                                     .cloned()
                                     .collect();
                                 app.state = State::Game;
@@ -158,7 +158,7 @@ impl App {
                 *t += 0.1;
                 if *t >= 1.0 {
                     self.selected = None;
-                    if self.levels[self.level_index].is_complete(&self.potions) {
+                    if self.levels[self.level_index].goal.is_complete(&self.potions) {
                         self.state = State::NextLevel;
                     } else {
                         self.state = State::Game;
@@ -224,7 +224,7 @@ impl App {
             Paragraph::new(format!("Level {}", self.level_index + 1)).alignment(Alignment::Center),
             title,
         );
-        let palette = self.levels[self.level_index].palette();
+        let palette = &self.levels[self.level_index].palette;
 
         for (i, rect) in layout.split(content).iter().enumerate() {
             let selected = self.selected.map(|x| x == i).unwrap_or(false);

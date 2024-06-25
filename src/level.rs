@@ -29,19 +29,13 @@ impl Palette {
     }
 }
 
-pub trait Level {
-    fn palette(&self) -> &Palette;
-    fn potions(&self) -> &[Vial];
-    fn is_complete(&self, potions: &[Vial]) -> bool;
+pub struct Level {
+    pub palette: Palette,
+    pub potions: Vec<Vial>,
+    pub goal: Goal,
 }
 
-pub struct UnmixLevel {
-    palette: Palette,
-    potions: Vec<Vial>,
-    goal: Goal,
-}
-
-impl Default for UnmixLevel {
+impl Default for Level {
     fn default() -> Self {
         Self {
             palette: Palette::new(vec![
@@ -55,7 +49,7 @@ impl Default for UnmixLevel {
     }
 }
 
-impl UnmixLevel {
+impl Level {
     fn new(vials: Vec<Vial>) -> Self {
         let heap: BinaryHeap<usize> = vials
             .iter()
@@ -105,7 +99,7 @@ pub enum Goal {
 // }
 
 impl Goal {
-    fn is_complete(&self, potions: &[Vial]) -> bool {
+    pub fn is_complete(&self, potions: &[Vial]) -> bool {
         match self {
             Goal::Unmix => potions.iter().all(|p| p.layers.len() <= 1),
             Goal::BreakSeed => potions.iter().all(|p| p.objects.iter().filter(|o| matches!(o.kind, ObjectKind::Seed)).map(|o| o.size)
@@ -114,23 +108,9 @@ impl Goal {
     }
 }
 
-impl Level for UnmixLevel {
-    fn palette(&self) -> &Palette {
-        &self.palette
-    }
-
-    fn potions(&self) -> &[Vial] {
-        &self.potions
-    }
-
-    fn is_complete(&self, potions: &[Vial]) -> bool {
-        self.goal.is_complete(potions)
-    }
-}
-
-pub fn levels() -> Vec<Box<dyn Level>> {
+pub fn levels() -> Vec<Level> {
     vec![
-        Box::new(UnmixLevel {
+        Level {
             goal: Goal::BreakSeed,
             potions: vec![
             Vial {
@@ -170,8 +150,9 @@ pub fn levels() -> Vec<Box<dyn Level>> {
             },
                 ],
                 ..Default::default()
-             }),
-        Box::new(UnmixLevel::new(vec![
+        },
+        Level {
+            potions: vec![
             Vial {
                 layers: vec![
                     Layer::Liquid {
@@ -192,8 +173,10 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                 }],
                 ..Default::default()
             },
-        ])),
-        Box::new(UnmixLevel::new(vec![
+        ],
+            ..Default::default()
+        },
+        Level { potions: vec![
             Vial {
                 layers: vec![
                     Layer::Liquid {
@@ -227,8 +210,11 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                 }],
                 ..Default::default()
             },
-        ])),
-        Box::new(UnmixLevel::new(vec![
+        ],
+                ..Default::default()
+        },
+        Level {
+            potions: vec![
             Vial {
                 layers: vec![
                     Layer::Liquid {
@@ -266,6 +252,8 @@ pub fn levels() -> Vec<Box<dyn Level>> {
                 }],
                 ..Default::default()
             },
-        ])),
+        ],
+                ..Default::default()
+        },
     ]
 }

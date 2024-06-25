@@ -178,7 +178,9 @@ impl Lerp<Vial> for Transfer {
                 objects_top_a.reverse();
                 for i in 0..transfer_count {
                     let mut obj = a.objects.swap_remove(objects_top_a[i]);
-                    obj.pos.y = b.size.y * 1.1;
+                    // XXX: This is causing a panic.
+                    // obj.pos.y = b.size.y * 1.1;
+                    // obj.pos.y = b.size.y * 0.8;
                     b.objects.push(obj);
                 }
             }
@@ -199,7 +201,9 @@ impl Lerp<Vial> for Transfer {
                 transfers.reverse();
                 for i in transfers {
                     let mut obj = a.objects.swap_remove(i);
-                    obj.pos.y = b.size.y * 1.1;
+                    // XXX: This is causing a panic.
+                    // obj.pos.y = b.size.y * 1.1;
+                    // obj.pos.y = b.size.y * 0.8;
                     b.objects.push(obj);
                 }
 
