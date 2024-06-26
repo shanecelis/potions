@@ -26,7 +26,7 @@ impl VialPhysics {
         let mut rigid_body_set = RigidBodySet::new();
         let mut collider_set = ColliderSet::new();
 
-        let wall_width = 0.01;
+        let wall_width = 0.1;
         /* Create the ground. */
         let collider = ColliderBuilder::cuboid(vial.size.x, wall_width)
             .translation(vector![0.0, - wall_width / 2.0])
@@ -34,13 +34,17 @@ impl VialPhysics {
         collider_set.insert(collider);
 
         // Walls
+
+        // Left wall
         let collider = ColliderBuilder::cuboid(wall_width, vial.size.y)
-            .translation(vector![-wall_width / 2.0, vial.size.y / 2.0])
+            .translation(vector![-wall_width / 2.0, vial.size.y / 2.0 - wall_width / 2.0])
             .build();
         collider_set.insert(collider);
-        let collider = ColliderBuilder::cuboid(wall_width, vial.size.y)
-            .translation(vector![vial.size.x + wall_width / 2.0,
-                                 vial.size.y / 2.0])
+
+        // Right wall
+        let collider = ColliderBuilder::cuboid(wall_width, vial.size.y * 1.5)
+            .translation(vector![vial.size.x -  wall_width / 2.0,
+                                 vial.size.y / 2.0 - wall_width / 2.0])
             .build();
         collider_set.insert(collider);
 
@@ -51,7 +55,7 @@ impl VialPhysics {
                 .translation(vector![obj.pos.x, obj.pos.y])
                 .build();
             rigid_body.user_data = obj.id as u128;
-            let mut collider = ColliderBuilder::ball((obj.size as f32 / 15.0) as f32).restitution(0.7)
+            let mut collider = ColliderBuilder::ball((obj.size as f32 / 15.0).max(0.2)).restitution(0.7)
                                                                      .build();
             collider.set_mass(0.1);
             collider.user_data = obj.id as u128;
@@ -91,7 +95,8 @@ impl VialPhysics {
     }
 
     pub fn step(&mut self, dt: Real) {
-        let gravity = vector![0.5, -9.81];
+        // let gravity = vector![0.5, -9.81];
+        let gravity = vector![0.0, -9.81];
         let mut accum = 0.0;
         /* Run the game loop, stepping the simulation once per frame. */
         while accum < dt {

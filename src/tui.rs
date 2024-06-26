@@ -75,12 +75,12 @@ impl<'a> Widget for VialWidget<'a> {
             match object.kind {
                 ObjectKind::Seed => {
                     let size = object.size as u16;
-                    let x = (object.pos.x / self.0.size.x * (area.width - 3) as f32) as u16;
-                    let y = (object.pos.y / self.0.size.y * (area.height - 2) as f32) as u16;
+                    let x = (object.pos.x / self.0.size.x * (area.width - 3) as f32) as i16;
+                    let y = (object.pos.y / self.0.size.y * (area.height - 2) as f32) as i16;
                     for j in 0..(size / 2).max(1) {
                         buf.set_string(
-                            area.x + (size / 2).max(1) + x as u16,
-                            area.y + area.height - 2 - j - y as u16,
+                            ((area.x + (size / 2).max(1)) as i16 + x) as u16,
+                            ((area.y + area.height - 2 - j) as i16 - y) as u16,
                             " ".repeat(size as usize),
                             border,
                         );

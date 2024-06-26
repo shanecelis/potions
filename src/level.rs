@@ -116,7 +116,7 @@ pub fn levels() -> Vec<Level> {
                     objects: vec![
                         Object {
                             kind: ObjectKind::Seed,
-                            pos: Vec2::new(5.0, 14.0),
+                            pos: Vec2::new(4.9, 13.0),
                             size: 1,
                             id: 0,
                         },
