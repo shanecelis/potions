@@ -5,16 +5,18 @@
 use std::{
     io::{self, stdout, Stdout},
     time::{Duration, Instant},
+    panic,
 };
 
 use crossterm::{
-    event::{self, Event, KeyCode},
+    event::{self, Event, KeyCode, KeyModifiers},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
 use ratatui::{layout::Flex, prelude::*, widgets::*};
 
 use potions::*;
+use potions::vial_physics::VialPhysics;
 
 fn main() -> io::Result<()> {
     App::run()
@@ -23,6 +25,7 @@ fn main() -> io::Result<()> {
 struct App {
     tick_count: u64,
     potions: Vec<Vial>,
+    vial_physics: Vec<VialPhysics>,
     cursor: usize,
     selected: Option<usize>,
     levels: Vec<Level>,
@@ -62,15 +65,23 @@ fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
 impl App {
     fn new() -> App {
         let levels = levels();
-        App {
+        let mut app = App {
             tick_count: 0,
             cursor: 0,
             selected: None,
             level_index: 0,
-            potions: levels[0].potions.iter().cloned().collect(),
+            potions: vec![],
+            vial_physics: vec![],
             levels,
             state: State::Game,
-        }
+        };
+        app.set_level(app.level_index);
+        app
+    }
+
+    pub fn set_level(&mut self, index: usize) {
+        self.potions = self.levels[index].potions.iter().cloned().collect();
+        self.vial_physics = self.potions.iter().map(VialPhysics::new).collect();
     }
 
     pub fn run() -> io::Result<()> {
@@ -78,6 +89,9 @@ impl App {
         let mut app = App::new();
         let mut last_tick = Instant::now();
         let tick_rate = Duration::from_millis(16);
+        // panic::catch_unwind(|| {
+        //     let _ = restore_terminal();
+        // }).unwrap();
         loop {
             let _ = terminal.draw(|frame| app.ui(frame));
             let timeout = tick_rate.saturating_sub(last_tick.elapsed());
@@ -85,6 +99,7 @@ impl App {
                 if let Event::Key(key) = event::read()? {
                     match key.code {
                         KeyCode::Char('q') => break,
+                        KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => break,
                         _ => {}
                     }
                     match app.state {
@@ -171,13 +186,16 @@ impl App {
                 }
             }
             State::Game => {
-                for potion in &mut self.potions {
+                for (i, potion) in self.potions.iter_mut().enumerate() {
                     match potion.transition() {
                         Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) => {
                             *potion = vial;
                         }
                         None => (),
                     }
+                    let phys = &mut self.vial_physics[i];//VialPhysics::new(potion);
+                    phys.step(0.1);
+                    phys.project(potion);
                 }
             }
             State::NextLevel => (),

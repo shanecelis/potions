@@ -1,3 +1,4 @@
+use bevy_math::Vec2;
 use super::{Layer, Object, ObjectKind, Palette, Vial};
 use ratatui::prelude::*;
 
@@ -10,10 +11,26 @@ impl From<crate::Color> for Color {
 #[derive(Debug, Clone)]
 pub struct VialWidget<'a>(pub &'a Vial, pub &'a Palette);
 
+fn find_margins(size: Vec2, area: Vec2) -> Vec2 {
+    let scale = f32::min(area.x / size.x, area.y / size.y);
+
+    let new_size = scale * size;
+    (area - new_size) / 2.0
+}
+
 impl<'a> Widget for VialWidget<'a> {
     #[allow(clippy::cast_possible_truncation)]
     fn render(self, area: Rect, buf: &mut Buffer) {
         let VialWidget(vial, palette) = self;
+        // XXX: Render it with the correct aspect ratio.
+        let margins = find_margins(Vec2::new(vial.size.x,
+                                             vial.size.y / 2.0), Vec2::new(area.width as f32, area.height as f32));
+        // dbg!(margins);
+        let [area] = Layout::vertical([Constraint::Percentage(100)])
+            .horizontal_margin(margins.x as u16)
+            .vertical_margin(margins.y as u16)
+            .areas(area);
+        // dbg!(area);
         let border = Style::new().bg(vial.glass.clone().into());
         // let view_volume = (area.width - 2) * (area.height - 1);
         let volume_per_row = vial.max_volume / (area.height - 1) as f64;
@@ -58,10 +75,12 @@ impl<'a> Widget for VialWidget<'a> {
             match object.kind {
                 ObjectKind::Seed => {
                     let size = object.size as u16;
+                    let x = (object.pos.x / self.0.size.x * (area.width - 3) as f32) as u16;
+                    let y = (object.pos.y / self.0.size.y * (area.height - 2) as f32) as u16;
                     for j in 0..(size / 2).max(1) {
                         buf.set_string(
-                            area.x + (size / 2).max(1) + object.pos.x as u16,
-                            area.y + area.height - 2 - j + object.pos.y as u16,
+                            area.x + (size / 2).max(1) + x as u16,
+                            area.y + area.height - 2 - j - y as u16,
                             " ".repeat(size as usize),
                             border,
                         );

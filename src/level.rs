@@ -116,28 +116,33 @@ pub fn levels() -> Vec<Level> {
                     objects: vec![
                         Object {
                             kind: ObjectKind::Seed,
-                            pos: Vec2::new(0.0, 0.0),
+                            pos: Vec2::new(5.0, 14.0),
                             size: 1,
+                            id: 0,
+                        },
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(0.0, 0.0),
+                            size: 2,
+                            id: 1,
+                        },
+                        Object {
+                            kind: ObjectKind::Seed,
+                            pos: Vec2::new(1.5, 0.0),
+                            size: 3,
+                            id: 2,
                         },
                         Object {
                             kind: ObjectKind::Seed,
                             pos: Vec2::new(3.0, 0.0),
-                            size: 2,
-                        },
-                        Object {
-                            kind: ObjectKind::Seed,
-                            pos: Vec2::new(7.0, 0.0),
-                            size: 3,
-                        },
-                        Object {
-                            kind: ObjectKind::Seed,
-                            pos: Vec2::new(11.0, 0.0),
                             size: 4,
+                            id: 3,
                         },
                         Object {
                             kind: ObjectKind::Seed,
-                            pos: Vec2::new(17.0, 0.0),
+                            pos: Vec2::new(2.0, 7.0),
                             size: 5,
+                            id: 4,
                         },
                     ],
                     ..Default::default()
@@ -159,7 +164,7 @@ pub fn levels() -> Vec<Level> {
                         },
                         Layer::Liquid {
                             id: 1,
-                            volume: 50.0,
+                            volume: 50.0
                         },
                     ],
                     ..Default::default()

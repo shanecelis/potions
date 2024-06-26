@@ -12,7 +12,9 @@ bevy_math = "0.13.2"
 color-art = "0.3.8"
 derived-deref = "2.1.0"
 kolorwheel = "1.1.1"
+rapier2d = "0.21.0"
 ratatui = { version = "0.26.3", optional = true }
+uuid = "1.9.1"
 
 [dev-dependencies]
 crossterm = "0.27.0"

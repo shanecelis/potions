@@ -50,6 +50,7 @@ pub struct Object {
     pub kind: ObjectKind,
     pub pos: Vec2,
     pub size: usize,
+    pub id: u128,
 }
 
 #[derive(Deref)]
@@ -92,15 +93,6 @@ pub enum ObjectKind {
 // }
 
 impl Layer {
-    // pub fn color(&self) -> Color {
-    //     match self {
-    //         Layer::Liquid { id, .. } => {
-
-    //         },
-    //         Layer::Object(_) => todo!(),
-    //         Layer::Empty => Color::from_rgb(0, 0, 0).unwrap()
-    //     }
-    // }
     pub fn volume(&self) -> f64 {
         match self {
             Layer::Liquid { volume, .. } => *volume,
@@ -124,7 +116,6 @@ pub enum Transfer {
 pub enum TransferError {}
 
 pub trait Lerp<T> {
-    // type Data;
     fn lerp(&self, a: &T, b: &T, t: f64) -> Option<(Vial, Vial)>;
     fn result(&self, a: &T, b: &T) -> (Vial, Vial) {
         self.lerp(a, b, 1.0).unwrap()
@@ -158,10 +149,10 @@ impl Lerp<Vial> for Transfer {
                 let Layer::Liquid {
                     volume: ref mut volume_a,
                     id: id_a,
-                } = a.layers.last_mut().unwrap()
-                else {
-                    panic!()
-                };
+                } = a.layers.last_mut().unwrap();
+                // else {
+                //     panic!()
+                // };
                 let total_volume_b = b.vol();
                 if let Some(Layer::Liquid {
                     volume: ref mut volume_b,

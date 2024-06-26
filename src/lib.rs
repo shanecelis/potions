@@ -1,6 +1,7 @@
 mod level;
 pub mod tui;
 mod vial;
+pub mod vial_physics;
 
 pub use level::{levels, Level, Palette};
 pub use vial::{Color, Layer, Lerp, Object, ObjectKind, Transfer, Transition, Vial};
