@@ -20,15 +20,21 @@ pub struct VialPhysics {
     event_handler: (),
 }
 
+const g_to_kg: f32 = 0.0001;
+const m_to_mm: f32 = 0.0001;
+const mm_to_m: f32 = 1_000.0;
+
 impl VialPhysics {
     pub fn new(vial: &Vial) -> Self {
 
         let mut rigid_body_set = RigidBodySet::new();
         let mut collider_set = ColliderSet::new();
+        // Convert from mm to m.
+        let vial_size_m = vial.size * mm_to_m;
 
-        let wall_width = 0.1;
+        let wall_width = 1.0 * mm_to_m;
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(vial.size.x, wall_width)
+        let collider = ColliderBuilder::cuboid(vial_size_m.x, wall_width)
             .translation(vector![0.0, - wall_width / 2.0])
             .build();
         collider_set.insert(collider);
@@ -36,26 +42,27 @@ impl VialPhysics {
         // Walls
 
         // Left wall
-        let collider = ColliderBuilder::cuboid(wall_width, vial.size.y)
-            .translation(vector![-wall_width / 2.0, vial.size.y / 2.0 - wall_width / 2.0])
+        let collider = ColliderBuilder::cuboid(wall_width, vial_size_m.y)
+            .translation(vector![-wall_width / 2.0, vial_size_m.y / 2.0 - wall_width / 2.0])
             .build();
         collider_set.insert(collider);
 
         // Right wall
-        let collider = ColliderBuilder::cuboid(wall_width, vial.size.y * 1.5)
-            .translation(vector![vial.size.x -  wall_width / 2.0,
-                                 vial.size.y / 2.0 - wall_width / 2.0])
+        let collider = ColliderBuilder::cuboid(wall_width, vial_size_m.y * 1.5)
+            .translation(vector![vial_size_m.x -  wall_width / 2.0,
+                                 vial_size_m.y / 2.0 - wall_width / 2.0])
             .build();
         collider_set.insert(collider);
 
         let mut objects = vec![];
         for obj in &vial.objects {
             /* Create the bouncing ball. */
+            let pos_m = obj.pos * mm_to_m;
             let mut rigid_body = RigidBodyBuilder::dynamic()
-                .translation(vector![obj.pos.x, obj.pos.y])
+                .translation(vector![pos_m.x, pos_m.y])
                 .build();
             rigid_body.user_data = obj.id as u128;
-            let mut collider = ColliderBuilder::ball((obj.size as f32 / 15.0).max(0.2)).restitution(0.7)
+            let mut collider = ColliderBuilder::ball((obj.size as f32 * mm_to_m).max(0.2)).restitution(0.7)
                                                                      .build();
             collider.set_mass(0.1);
             collider.user_data = obj.id as u128;
@@ -125,8 +132,8 @@ impl VialPhysics {
             if let Some(rigid_body) = self.rigid_body_set.get(*handle) {
                 if let Some(mut obj) = map.remove(&rigid_body.user_data) {
                     let p = rigid_body.translation();
-                    obj.pos.x = p.x;
-                    obj.pos.y = p.y;
+                    obj.pos.x = p.x * m_to_mm;
+                    obj.pos.y = p.y * m_to_mm;
                     vial.objects.push(obj);
                 }
             }

@@ -77,6 +77,7 @@ impl<'a> Widget for VialWidget<'a> {
                     let size = object.size as u16;
                     let x = (object.pos.x / self.0.size.x * (area.width - 3) as f32) as i16;
                     let y = (object.pos.y / self.0.size.y * (area.height - 2) as f32) as i16;
+                    // dbg!((x, y));
                     for j in 0..(size / 2).max(1) {
                         buf.set_string(
                             ((area.x + (size / 2).max(1)) as i16 + x) as u16,

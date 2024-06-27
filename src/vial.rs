@@ -22,6 +22,7 @@ pub struct Vial {
     pub objects: Vec<Object>,
     pub max_volume: f64,
     pub glass: Color,
+    /// units: mm
     pub size: Vec2,
 }
 
