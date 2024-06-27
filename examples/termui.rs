@@ -160,6 +160,11 @@ impl App {
         Ok(())
     }
 
+    fn sync_objects(&mut self, vial_index: usize) {
+
+
+    }
+
     fn on_tick(&mut self) {
         self.tick_count += 1;
         match self.state {

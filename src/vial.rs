@@ -14,8 +14,30 @@ impl From<color_art::Color> for Color {
     }
 }
 
+/// A vial holds liquids and objects in it.
 ///
+/// Here's what the coordinate space looks like.
 ///
+///              ^
+///              |
+/// y in [0, h]  +-------------+
+///              |             |
+///              |             |
+///              |             |
+///              |             |
+///              |             |
+///              |             |
+///              +-------------+
+///              |             |
+///              |   layer1    |
+///              |             |
+///              +-------------+
+///              |             |
+///              |   layer0    |
+///              |             |
+///              +-------------+->   x in [0, w]
+///
+///                    Vial
 #[derive(Debug, Clone)]
 pub struct Vial {
     pub layers: Vec<Layer>,

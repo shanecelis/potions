@@ -101,6 +101,11 @@ impl VialPhysics {
         }
     }
 
+    pub fn add(&mut self, obj: Object) -> bool {
+
+
+    }
+
     pub fn step(&mut self, dt: Real) {
         // let gravity = vector![0.5, -9.81];
         let gravity = vector![0.0, -9.81];
