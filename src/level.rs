@@ -101,7 +101,7 @@ impl Goal {
                     .iter()
                     .filter(|o| matches!(o.kind, ObjectKind::Seed))
                     .map(|o| o.size)
-                    .all(|s| s <= 1)
+                    .all(|s| s <= 1.0)
             }),
         }
     }
@@ -114,37 +114,41 @@ pub fn levels() -> Vec<Level> {
             potions: vec![
                 Vial {
                     objects: vec![
+                        // Object {
+                        //     kind: ObjectKind::Seed,
+                        //     pos: Vec2::new(4.9, 14.0),
+                        //     size: 1.0,
+                        //     id: 0,
+                        // },
                         Object {
                             kind: ObjectKind::Seed,
-                            pos: Vec2::new(4.9, 13.0),
-                            size: 1,
-                            id: 0,
-                        },
-                        Object {
-                            kind: ObjectKind::Seed,
-                            pos: Vec2::new(0.0, 0.0),
-                            size: 2,
+                            pos: Vec2::new(10.0, 10.0),
+                            size: 2.0,
                             id: 1,
                         },
-                        Object {
-                            kind: ObjectKind::Seed,
-                            pos: Vec2::new(1.5, 0.0),
-                            size: 3,
-                            id: 2,
-                        },
-                        Object {
-                            kind: ObjectKind::Seed,
-                            pos: Vec2::new(3.0, 0.0),
-                            size: 4,
-                            id: 3,
-                        },
-                        Object {
-                            kind: ObjectKind::Seed,
-                            pos: Vec2::new(2.0, 7.0),
-                            size: 5,
-                            id: 4,
-                        },
+                        // Object {
+                        //     kind: ObjectKind::Seed,
+                        //     pos: Vec2::new(15.0, 10.0),
+                        //     size: 3.0,
+                        //     id: 2,
+                        // },
+                        // Object {
+                        //     kind: ObjectKind::Seed,
+                        //     pos: Vec2::new(10.0, 2.0),
+                        //     size: 4.0,
+                        //     id: 3,
+                        // },
+                        // Object {
+                        //     kind: ObjectKind::Seed,
+                        //     pos: Vec2::new(20.0, 7.0),
+                        //     size: 5.0,
+                        //     id: 4,
+                        // },
                     ],
+                    ..Default::default()
+                },
+                Vial {
+                    layers: vec![],
                     ..Default::default()
                 },
                 Vial {

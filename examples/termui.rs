@@ -117,6 +117,7 @@ impl App {
                             }
                         }
                         State::Game => match key.code {
+                            KeyCode::Char('n') => { app.step(Duration::from_secs_f32(1.0 / 60.0)); },
                             KeyCode::Char(' ') => match app.selected {
                                 Some(i) => {
                                     if i == app.cursor {
@@ -152,8 +153,9 @@ impl App {
             }
 
             if last_tick.elapsed() >= tick_rate {
-                app.on_tick();
-                last_tick = Instant::now();
+                let current = Instant::now();
+                app.on_tick(current - last_tick);
+                last_tick = current;
             }
         }
         restore_terminal()?;
@@ -161,19 +163,33 @@ impl App {
     }
 
     fn sync_objects(&mut self, vial_index: usize) {
-
-
+        for obj in &self.potions[vial_index].objects {
+            self.vial_physics[vial_index].insert(obj);
+        }
     }
 
-    fn on_tick(&mut self) {
+    fn step(&mut self, delta: Duration) {
+        for (i, potion) in self.potions.iter_mut().enumerate() {
+            let phys = &mut self.vial_physics[i];
+            phys.step(delta.as_secs_f32());
+            phys.project(potion);
+        }
+    }
+
+    fn on_tick(&mut self, delta: Duration) {
         self.tick_count += 1;
+        let mut sync = vec![];
         match self.state {
             State::Transfer(ref transfer, ref mut t) => {
-                let pour_from = &self.potions[self.selected.unwrap()];
-                let pour_into = &self.potions[self.cursor];
+                let i = self.selected.unwrap();
+                let j = self.cursor;
+                let pour_from = &self.potions[i];
+                let pour_into = &self.potions[j];
                 if let Some((a, b)) = transfer.lerp(pour_from, pour_into, *t) {
-                    self.potions[self.selected.unwrap()] = a;
-                    self.potions[self.cursor] = b;
+                    self.potions[i] = a;
+                    self.potions[j] = b;
+                    sync.push(i);
+                    sync.push(j);
                 } else {
                     *t = 2.0;
                 }
@@ -194,18 +210,22 @@ impl App {
                 for (i, potion) in self.potions.iter_mut().enumerate() {
                     match potion.transition() {
                         Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) => {
+                            sync.push(i);
                             *potion = vial;
                         }
                         None => (),
                     }
-                    let phys = &mut self.vial_physics[i];//VialPhysics::new(potion);
-                    phys.step(0.1);
-                    phys.project(potion);
                 }
             }
             State::NextLevel => (),
             State::End => (),
             _ => todo!("{:?}", self.state),
+        }
+        for i in sync {
+            self.sync_objects(i);
+        }
+        if matches!(self.state, State::Game) {
+            self.step(delta);
         }
     }
 

@@ -54,7 +54,7 @@ impl Default for Vial {
             layers: vec![],
             max_volume: 100.0,
             objects: vec![],
-            size: Vec2::new(5.0, 15.0),
+            size: Vec2::new(25.0, 75.0),
             glass: color_art::Color::from_rgba(255, 255, 255, 0.5)
                 .unwrap()
                 .into(),
@@ -72,7 +72,7 @@ pub enum Layer {
 pub struct Object {
     pub kind: ObjectKind,
     pub pos: Vec2,
-    pub size: usize,
+    pub size: f64,
     pub id: u128,
 }
 
@@ -209,7 +209,7 @@ impl Lerp<Vial> for Transfer {
                 for i in 0..transfer_count {
                     let mut obj = a.objects.swap_remove(objects_top_a[i]);
                     // XXX: This is causing a panic.
-                    // obj.pos.y = b.size.y * 1.1;
+                    obj.pos.y = b.size.y;
                     // obj.pos.y = b.size.y * 0.8;
                     b.objects.push(obj);
                 }
@@ -239,7 +239,7 @@ impl Lerp<Vial> for Transfer {
                 for i in transfers {
                     let mut obj = a.objects.swap_remove(i);
                     // XXX: This is causing a panic.
-                    // obj.pos.y = b.size.y * 1.1;
+                    obj.pos.y = b.size.y;
                     // obj.pos.y = b.size.y * 0.8;
                     b.objects.push(obj);
                 }
@@ -339,31 +339,32 @@ impl Vial {
     }
 
     pub fn transition(&self) -> Option<Transition> {
-        if self.layers.len() == 0 {
-            let mut a = self.clone();
-            let mut accum = vec![];
-            for obj in a
-                .objects
-                .iter_mut()
-                .filter(|o| o.pos.y > a.size.y && o.size > 1)
-            {
-                let smaller_count = 3;
-                obj.size = obj.size.saturating_sub(1);
-                for i in 0..smaller_count {
-                    // XXX: Change where they are
-                    accum.push(obj.clone());
-                }
-            }
-            if accum.len() <= 0 {
-                None
-            } else {
-                for o in accum {
-                    a.objects.push(o);
-                }
-                Some(Transition::BreakSeed(a))
-            }
-        } else {
-            None
-        }
+        None
+        // if self.layers.len() == 0 {
+        //     let mut a = self.clone();
+        //     let mut accum = vec![];
+        //     for obj in a
+        //         .objects
+        //         .iter_mut()
+        //         .filter(|o| o.pos.y > a.size.y && o.size > 1.0)
+        //     {
+        //         let divide_into_count = 2;
+        //         obj.size = obj.size.saturating_sub(1.0);
+        //         for i in 0..smaller_count {
+        //             // XXX: Change where they are
+        //             accum.push(obj.clone());
+        //         }
+        //     }
+        //     if accum.len() <= 0 {
+        //         None
+        //     } else {
+        //         for o in accum {
+        //             a.objects.push(o);
+        //         }
+        //         Some(Transition::BreakSeed(a))
+        //     }
+        // } else {
+        //     None
+        // }
     }
 }
