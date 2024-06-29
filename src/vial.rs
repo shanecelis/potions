@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 // use color_art::Color;
 use bevy_math::{IVec2, Vec2};
+use crate::Palette;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct Color(color_art::Color);
@@ -366,5 +367,20 @@ impl Vial {
         // } else {
         //     None
         // }
+    }
+
+    pub fn mix(&mut self, palette: &mut Palette) -> bool {
+        if self.layers.len() < 2 {
+            false
+        } else {
+            let top = self.layers.pop().unwrap();
+            let bottom = self.layers.pop().unwrap();
+            let color = (top * palette[top.id] + bottom * palette[bottom.id]) / (top.volume + bottom.volume);
+            let new_id = palette.len();
+            palette.push(color);
+            let mix = Layer::Liquid { volume: top.volume + bottom.volume, id: new_id };
+            self.layers.push(mix);
+            true
+        }
     }
 }
