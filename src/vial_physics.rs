@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use super::{Vial, Object, VialLoc};
 use bevy_math::Vec2;
+use std::f32::consts::PI;
 use crate::constant::*;
 
 use rapier2d::prelude::*;
@@ -105,9 +106,11 @@ impl VialPhysics {
                 .build();
             rigid_body.user_data = obj.id as u128;
             let mut collider = ColliderBuilder::ball(obj.size as f32 * MM_TO_M)
-                .restitution(0.7)
+                // .restitution(0.7)
+                .restitution(0.1)
                 .build();
-            collider.set_density(GLASS_DENSITY); // glass
+            // collider.set_density(GLASS_DENSITY); // glass
+            collider.set_density(WATER_DENSITY); // glass
             collider.user_data = obj.id as u128;
             let handle = self.rigid_body_set.insert(rigid_body);
             self.objects.insert(obj.id, handle);
@@ -123,22 +126,43 @@ impl VialPhysics {
         let mut map: HashMap<u128, &Object> = vial.objects.iter().map(|o| (o.id, o)).collect();
         for (handle, rigid_body) in self.rigid_body_set.iter_mut() {
             rigid_body.reset_forces(true);
-            let p = rigid_body.translation();
+            let p: &Vector<Real> = rigid_body.translation();
+            // let p = r.translation;
+            let v = rigid_body.velocity_at_point(&Point::from(*p));
             let pos_mm = Vec2::new(p.x * M_TO_MM, p.y * M_TO_MM);
-            if let Some(VialLoc::Layer(i)) = vial.in_layer(pos_mm) {
-                if let Some(obj) = map.remove(&rigid_body.user_data) {
-                    let s = obj.size as f32 * MM_TO_M;
-                    let density_water = 4.0 * WATER_DENSITY; // kg/m^2
-                    let buoyancy_force = vector![0.0, (s * s * GRAVITY * density_water) as f32];
-                    rigid_body.add_force(buoyancy_force, true);
+            match vial.in_layer(pos_mm) {
+                Some(VialLoc::Layer { index: i, height: layer_height }) => 
+                    if let Some(obj) = map.remove(&rigid_body.user_data) {
+                        let s = obj.size as f32 * MM_TO_M;
+                        if let Some(buoyancy_area) = circle_buoyancy_area(s, p, &vector![0.0, 1.0], layer_height * MM_TO_M) {
+                            let buoyancy_force = vector![0.0, (buoyancy_area * GRAVITY * WATER_DENSITY) as f32];
+                            // rigid_body.add_force(buoyancy_force, false);
+                            // rigid_body.set_linear_damping(200.0);
+                            // rigid_body.set_linear_damping(dbg!(drag_force(WATER_DENSITY, 1.0, 2.0 * s, CIRCLE_DRAG)));
+                            let fudge = 1.0;
+                            rigid_body.set_linear_damping(fudge * drag_force(WATER_DENSITY, v.y.abs(), 2.0 * s, CIRCLE_DRAG));
+                            // rigid_body.set_linear_damping(fudge * drag_force(WATER_DENSITY, v.y * v.y, 2.0 * s, CIRCLE_DRAG));
+                        }
+                    },
+                Some(VialLoc::Top { height: layer_height }) => {
+                    if let Some(obj) = map.remove(&rigid_body.user_data) {
+                        let s = obj.size as f32 * MM_TO_M;
+                    if let Some(buoyancy_area) = circle_buoyancy_area(s, p, &vector![0.0, 1.0], layer_height * MM_TO_M) {
+                        assert!(buoyancy_area <= 0.01, "{}", buoyancy_area);
+                    }
+                    }
                 }
-
+                _ => {
+                let m = rigid_body.mass();
+                rigid_body.add_force(vector![0.0, -m* GRAVITY], false);
+                }
             }
         }
     }
 
     pub fn step(&mut self, dt: Real) {
-        let gravity = vector![0.0, -GRAVITY];
+        // let gravity = vector![0.0, -GRAVITY];
+        let gravity = vector![0.0, 0.0];
         // let mut accum = 0.0;
         /* Run the game loop, stepping the simulation once per frame. */
         // self.integration_parameters.dt = dt;
@@ -182,4 +206,47 @@ impl VialPhysics {
         }
         assert!(map.len() == 0);
     }
+}
+
+fn drag_force(fluid_density: f32, relative_velocity: f32, reference_area: f32, drag_coefficient: f32) -> f32 {
+    0.5 * fluid_density * relative_velocity * relative_velocity * reference_area * drag_coefficient
+}
+
+pub(crate) fn circle_wedge_area(R: f32, h: f32) -> f32 {
+    R * R * ((R - h)/ R).acos() - (R - h) * (2.0 * R * h - h * h).sqrt()
+}
+
+pub(crate) fn circle_buoyancy_area(R: f32, p: &Vector<Real>, water_normal: &Vector<Real>, w: f32) -> Option<f32> {
+    let d = p.dot(&water_normal) - w; // distance to plane
+    if d > 0.0 {
+        None
+    } else {
+        let h = R - d;
+        let A = PI * R * R;
+        if h > R {
+            Some(A)
+        } else {
+            Some(A - circle_wedge_area(R, h))
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_circle_wedge_area() {
+        assert_eq!(circle_wedge_area(1.0, 0.0), 0.0);
+        assert_eq!(circle_wedge_area(1.0, 1.0), PI / 2.0);
+        // assert_eq!(circle_wedge_area(1.0, 2.0), PI);
+    }
+
+    #[test]
+    fn test_circle_buoyancy_area() {
+        assert_eq!(circle_buoyancy_area(1.0, &vector![0.0, 0.0], &vector![0.0, 1.0], 0.0), Some(PI / 2.0));
+        assert_eq!(circle_buoyancy_area(1.0, &vector![0.0, 0.0], &vector![0.0, 1.0], 2.0), Some(PI));
+        assert_eq!(circle_buoyancy_area(1.0, &vector![0.0, 0.0], &vector![0.0, 1.0], -2.0), None);
+    }
+
 }

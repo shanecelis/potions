@@ -201,8 +201,8 @@ impl Lerp<Vial> for Transfer {
                     .iter()
                     .enumerate()
                     .filter_map(|(i, o)| match a.in_layer(o.pos) {
-                        Some(VialLoc::Top) => Some(i),
-                        Some(VialLoc::Layer(l)) if l == top_layer_a => Some(i),
+                        Some(VialLoc::Top { .. } ) => Some(i),
+                        Some(VialLoc::Layer { index:l, .. }) if l == top_layer_a => Some(i),
                         _ => None,
                     })
                     .collect();
@@ -302,8 +302,8 @@ impl Lerp<Vial> for Transfer {
 }
 
 pub enum VialLoc {
-    Layer(usize),
-    Top,
+    Layer { index: usize, height: f32 },
+    Top { height: f32 },
 }
 
 impl Vial {
@@ -325,11 +325,11 @@ impl Vial {
         for (i, layer) in self.layers.iter().enumerate() {
             height += height_per_vol * layer.volume();
             if (point.y as f64) < height {
-                return Some(VialLoc::Layer(i));
+                return Some(VialLoc::Layer { index: i, height: height as f32 });
             }
         }
         if point.y < self.size.y {
-            return Some(VialLoc::Top);
+            return Some(VialLoc::Top { height: self.size.y });
         }
         None
     }
