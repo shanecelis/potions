@@ -36,9 +36,7 @@ pub struct Level {
 impl Default for Level {
     fn default() -> Self {
         Self {
-            palette: Palette::new(vec![rgb(255, 0, 0),
-                                       rgb(0, 255, 0),
-                                       rgb(0, 0, 255)]),
+            palette: Palette::new(vec![rgb(255, 0, 0), rgb(0, 255, 0), rgb(0, 0, 255)]),
             potions: vec![],
             goal: Goal::Unmix,
         }
@@ -150,13 +148,10 @@ pub fn levels() -> Vec<Level> {
                     ..Default::default()
                 },
                 Vial {
-                    layers: vec![
-
-                        Layer::Liquid {
-                            id: 0,
-                            volume: 50.0,
-                        },
-                    ],
+                    layers: vec![Layer::Liquid {
+                        id: 0,
+                        volume: 50.0,
+                    }],
                     ..Default::default()
                 },
                 Vial {
@@ -176,7 +171,7 @@ pub fn levels() -> Vec<Level> {
                         },
                         Layer::Liquid {
                             id: 1,
-                            volume: 50.0
+                            volume: 50.0,
                         },
                     ],
                     ..Default::default()

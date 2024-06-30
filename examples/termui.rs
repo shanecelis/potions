@@ -4,8 +4,8 @@
 
 use std::{
     io::{self, stdout, Stdout},
-    time::{Duration, Instant},
     panic,
+    time::{Duration, Instant},
 };
 
 use crossterm::{
@@ -15,8 +15,8 @@ use crossterm::{
 };
 use ratatui::{layout::Flex, prelude::*, widgets::*};
 
-use potions::*;
 use potions::vial_physics::VialPhysics;
+use potions::*;
 
 fn main() -> io::Result<()> {
     App::run()
@@ -83,11 +83,7 @@ impl App {
         if index >= self.levels.len() || index < 0 {
             false
         } else {
-            self.potions = self.levels[index]
-                .potions
-                .iter()
-                .cloned()
-                .collect();
+            self.potions = self.levels[index].potions.iter().cloned().collect();
             self.vial_physics = self.potions.iter().map(VialPhysics::new).collect();
             self.level_index = index;
             true
@@ -124,14 +120,14 @@ impl App {
                             KeyCode::Char('m') => {
                                 let palette = &mut app.levels[app.level_index].palette;
                                 app.potions[app.cursor].mix(palette);
-                            },
+                            }
                             KeyCode::Char('n') => {
                                 app.goto_level(app.level_index + 1);
                                 // app.step(Duration::from_secs_f32(1.0 / 60.0));
-                            },
+                            }
                             KeyCode::Char('p') => {
                                 app.goto_level(app.level_index.saturating_sub(1));
-                            },
+                            }
                             KeyCode::Char(' ') | KeyCode::Up => match app.selected {
                                 Some(i) => {
                                     if i == app.cursor {
@@ -143,7 +139,6 @@ impl App {
                                             app.state = State::Transfer(transfer, 0.0);
                                         } else {
                                             app.selected = None;
-
                                         }
                                     }
                                 }

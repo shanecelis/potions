@@ -1,5 +1,5 @@
-use bevy_math::Vec2;
 use super::{Layer, Object, ObjectKind, Palette, Vial};
+use bevy_math::Vec2;
 use ratatui::prelude::*;
 
 impl From<crate::Color> for Color {
@@ -23,8 +23,10 @@ impl<'a> Widget for VialWidget<'a> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let VialWidget(vial, palette) = self;
         // XXX: Render it with the correct aspect ratio.
-        let margins = find_margins(Vec2::new(vial.size.x,
-                                             vial.size.y / 2.0), Vec2::new(area.width as f32, area.height as f32));
+        let margins = find_margins(
+            Vec2::new(vial.size.x, vial.size.y / 2.0),
+            Vec2::new(area.width as f32, area.height as f32),
+        );
         // dbg!(margins);
         let [area] = Layout::vertical([Constraint::Percentage(100)])
             .horizontal_margin(margins.x as u16)

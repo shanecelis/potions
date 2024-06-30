@@ -3,10 +3,10 @@ use derived_deref::{Deref, DerefMut};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 // use color_art::Color;
-use bevy_math::{IVec2, Vec2};
-use bevy_color::{Srgba, Mix};
-use quantities::prelude::*;
 use crate::Palette;
+use bevy_color::{Mix, Srgba};
+use bevy_math::{IVec2, Vec2};
+use quantities::prelude::*;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
 pub struct Color(color_art::Color);
@@ -26,23 +26,23 @@ impl From<Color> for bevy_color::Srgba {
             red: f(c.red()),
             green: f(c.green()),
             blue: f(c.blue()),
-            alpha: 1.0
+            alpha: 1.0,
         }
     }
 }
 
 impl From<bevy_color::Srgba> for Color {
     fn from(c: bevy_color::Srgba) -> Self {
-        let bevy_color::Srgba { red, green, blue, alpha } = c;
+        let bevy_color::Srgba {
+            red,
+            green,
+            blue,
+            alpha,
+        } = c;
         fn f(f: f32) -> u8 {
             (f * 255.0) as u8
         }
-        Self(color_art::Color::new(
-            f(red),
-            f(green),
-            f(blue),
-            1.0
-            ))
+        Self(color_art::Color::new(f(red), f(green), f(blue), 1.0))
     }
 }
 
@@ -201,8 +201,8 @@ impl Lerp<Vial> for Transfer {
                     .iter()
                     .enumerate()
                     .filter_map(|(i, o)| match a.in_layer(o.pos, o.size) {
-                        Some(VialLoc::Top { .. } ) => Some(i),
-                        Some(VialLoc::Layer { index:l, .. }) if l == top_layer_a => Some(i),
+                        Some(VialLoc::Top { .. }) => Some(i),
+                        Some(VialLoc::Layer { index: l, .. }) if l == top_layer_a => Some(i),
                         _ => None,
                     })
                     .collect();
@@ -212,8 +212,10 @@ impl Lerp<Vial> for Transfer {
                 } = a.layers.last_mut().unwrap();
                 let total_volume_b = b.vol();
                 if b.layers.len() == 0 {
-                    b.layers.push(Layer::Liquid { volume: 0.0,
-                                                  id: *id_a });
+                    b.layers.push(Layer::Liquid {
+                        volume: 0.0,
+                        id: *id_a,
+                    });
                 }
                 if let Some(Layer::Liquid {
                     volume: ref mut volume_b,
@@ -325,11 +327,16 @@ impl Vial {
         for (i, layer) in self.layers.iter().enumerate() {
             height += height_per_vol * layer.volume();
             if ((point.y + r) as f32) < height {
-                return Some(VialLoc::Layer { index: i, height: height as f32 });
+                return Some(VialLoc::Layer {
+                    index: i,
+                    height: height as f32,
+                });
             }
         }
         if point.y < self.size.y {
-            return Some(VialLoc::Top { height: self.size.y });
+            return Some(VialLoc::Top {
+                height: self.size.y,
+            });
         }
         None
     }
@@ -413,8 +420,14 @@ impl Vial {
         if self.layers.len() < 2 {
             false
         } else {
-            let Layer::Liquid { id: top_id, volume: top_volume } = self.layers.pop().unwrap();
-            let Layer::Liquid { id: bottom_id, volume: bottom_volume } = self.layers.pop().unwrap();
+            let Layer::Liquid {
+                id: top_id,
+                volume: top_volume,
+            } = self.layers.pop().unwrap();
+            let Layer::Liquid {
+                id: bottom_id,
+                volume: bottom_volume,
+            } = self.layers.pop().unwrap();
             let top_color: Srgba = palette[top_id].clone().into();
             let bottom_color: Srgba = palette[bottom_id].clone().into();
             // let color = (top_volume * top_color + bottom_volume * bottom_color) / (top_volume + bottom_volume);
@@ -422,7 +435,10 @@ impl Vial {
             let color: Srgba = top_color.mix(&bottom_color, p as f32);
             let new_id = palette.len();
             palette.push(color.into());
-            let mix = Layer::Liquid { volume: top_volume + bottom_volume, id: new_id };
+            let mix = Layer::Liquid {
+                volume: top_volume + bottom_volume,
+                id: new_id,
+            };
             self.layers.push(mix);
             true
         }
@@ -443,5 +459,4 @@ mod test {
         assert_eq!(a + c, Amnt!(1.001) * METER);
         assert_eq!(a.to_string(), "1 m");
     }
-
 }
