@@ -37,8 +37,8 @@ struct App {
 enum State {
     Game,
     NextLevel,
-    Transfer(Transfer, f64),
-    // Pouring(Vial, Vial, f64),
+    Transfer(Transfer, f32),
+    // Pouring(Vial, Vial, f32),
     End,
 }
 

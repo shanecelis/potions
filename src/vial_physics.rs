@@ -129,33 +129,38 @@ impl VialPhysics {
             let p: &Vector<Real> = rigid_body.translation();
             // let p = r.translation;
             let v = rigid_body.velocity_at_point(&Point::from(*p));
-            let pos_mm = Vec2::new(p.x * M_TO_MM, p.y * M_TO_MM);
-            match vial.in_layer(pos_mm) {
+
+            if let Some(obj) = map.remove(&rigid_body.user_data) {
+                let s = obj.size as f32 * MM_TO_M;
+            let pos_mm = Vec2::new(p.x * M_TO_MM, p.y * M_TO_MM + obj.size as f32);
+            match vial.in_layer(pos_mm, obj.size) {
                 Some(VialLoc::Layer { index: i, height: layer_height }) => 
-                    if let Some(obj) = map.remove(&rigid_body.user_data) {
-                        let s = obj.size as f32 * MM_TO_M;
-                        if let Some(buoyancy_area) = circle_buoyancy_area(s, p, &vector![0.0, 1.0], layer_height * MM_TO_M) {
-                            let buoyancy_force = vector![0.0, (buoyancy_area * GRAVITY * WATER_DENSITY) as f32];
-                            // rigid_body.add_force(buoyancy_force, false);
-                            // rigid_body.set_linear_damping(200.0);
-                            // rigid_body.set_linear_damping(dbg!(drag_force(WATER_DENSITY, 1.0, 2.0 * s, CIRCLE_DRAG)));
-                            let fudge = 1.0;
-                            rigid_body.set_linear_damping(fudge * drag_force(WATER_DENSITY, v.y.abs(), 2.0 * s, CIRCLE_DRAG));
-                            // rigid_body.set_linear_damping(fudge * drag_force(WATER_DENSITY, v.y * v.y, 2.0 * s, CIRCLE_DRAG));
-                        }
+                    if let Some(buoyancy_area) = circle_buoyancy_area(s, p, &vector![0.0, 1.0], layer_height * MM_TO_M) {
+                        let buoyancy_force = vector![0.0, (buoyancy_area * GRAVITY * WATER_DENSITY) as f32];
+                        // rigid_body.add_force(buoyancy_force, false);
+                        // rigid_body.set_linear_damping(200.0);
+                        // rigid_body.set_linear_damping(dbg!(drag_force(WATER_DENSITY, 1.0, 2.0 * s, CIRCLE_DRAG)));
+                        let fudge = 1.0;
+                        rigid_body.set_linear_damping(fudge * drag_force(WATER_DENSITY, v.y.abs(), 2.0 * s, CIRCLE_DRAG));
+                        // rigid_body.set_linear_damping(fudge * drag_force(WATER_DENSITY, v.y * v.y, 2.0 * s, CIRCLE_DRAG));
                     },
                 Some(VialLoc::Top { height: layer_height }) => {
-                    if let Some(obj) = map.remove(&rigid_body.user_data) {
-                        let s = obj.size as f32 * MM_TO_M;
+                    let s = obj.size as f32 * MM_TO_M;
                     if let Some(buoyancy_area) = circle_buoyancy_area(s, p, &vector![0.0, 1.0], layer_height * MM_TO_M) {
                         assert!(buoyancy_area <= 0.01, "{}", buoyancy_area);
                     }
-                    }
                 }
                 _ => {
-                let m = rigid_body.mass();
-                rigid_body.add_force(vector![0.0, -m* GRAVITY], false);
+                    let m = rigid_body.mass();
+                    rigid_body.set_linear_damping(0.0);
+                    rigid_body.add_force(vector![0.0, -m* GRAVITY], false);
                 }
+            }
+            }else {
+
+                let m = rigid_body.mass();
+                rigid_body.set_linear_damping(0.0);
+                rigid_body.add_force(vector![0.0, -m* GRAVITY], true);
             }
         }
     }
@@ -216,17 +221,17 @@ pub(crate) fn circle_wedge_area(R: f32, h: f32) -> f32 {
     R * R * ((R - h)/ R).acos() - (R - h) * (2.0 * R * h - h * h).sqrt()
 }
 
-pub(crate) fn circle_buoyancy_area(R: f32, p: &Vector<Real>, water_normal: &Vector<Real>, w: f32) -> Option<f32> {
+pub(crate) fn circle_buoyancy_area(r: f32, p: &Vector<Real>, water_normal: &Vector<Real>, w: f32) -> Option<f32> {
     let d = p.dot(&water_normal) - w; // distance to plane
     if d > 0.0 {
         None
     } else {
-        let h = R - d;
-        let A = PI * R * R;
-        if h > R {
-            Some(A)
+        let h = r - d;
+        let a = PI * r * r;
+        if h > r {
+            Some(a)
         } else {
-            Some(A - circle_wedge_area(R, h))
+            Some(a - circle_wedge_area(r, h))
         }
     }
 }

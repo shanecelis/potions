@@ -78,7 +78,7 @@ impl From<bevy_color::Srgba> for Color {
 pub struct Vial {
     pub layers: Vec<Layer>,
     pub objects: Vec<Object>,
-    pub max_volume: f64,
+    pub max_volume: f32,
     pub glass: Color,
     /// units: mm
     pub size: Vec2,
@@ -100,7 +100,7 @@ impl Default for Vial {
 
 #[derive(Debug, Clone)]
 pub enum Layer {
-    Liquid { id: usize, volume: f64 },
+    Liquid { id: usize, volume: f32 },
     // Empty,
 }
 
@@ -113,7 +113,7 @@ pub struct LiquidProp {
 pub struct Object {
     pub kind: ObjectKind,
     pub pos: Vec2,
-    pub size: f64,
+    pub size: f32,
     pub id: u128,
 }
 
@@ -157,7 +157,7 @@ pub enum ObjectKind {
 // }
 
 impl Layer {
-    pub fn volume(&self) -> f64 {
+    pub fn volume(&self) -> f32 {
         match self {
             Layer::Liquid { volume, .. } => *volume,
             // Layer::Empty => 0.0,
@@ -180,14 +180,14 @@ pub enum Transfer {
 pub enum TransferError {}
 
 pub trait Lerp<T> {
-    fn lerp(&self, a: &T, b: &T, t: f64) -> Option<(Vial, Vial)>;
+    fn lerp(&self, a: &T, b: &T, t: f32) -> Option<(Vial, Vial)>;
     fn result(&self, a: &T, b: &T) -> (Vial, Vial) {
         self.lerp(a, b, 1.0).unwrap()
     }
 }
 
 impl Lerp<Vial> for Transfer {
-    fn lerp(&self, a: &Vial, b: &Vial, t: f64) -> Option<(Vial, Vial)> {
+    fn lerp(&self, a: &Vial, b: &Vial, t: f32) -> Option<(Vial, Vial)> {
         if t > 1.0 {
             return None;
         }
@@ -200,7 +200,7 @@ impl Lerp<Vial> for Transfer {
                     .objects
                     .iter()
                     .enumerate()
-                    .filter_map(|(i, o)| match a.in_layer(o.pos) {
+                    .filter_map(|(i, o)| match a.in_layer(o.pos, o.size) {
                         Some(VialLoc::Top { .. } ) => Some(i),
                         Some(VialLoc::Layer { index:l, .. }) if l == top_layer_a => Some(i),
                         _ => None,
@@ -243,7 +243,7 @@ impl Lerp<Vial> for Transfer {
                     a.layers.pop();
                 }
                 // We also have to transfer objects that are in the liquid.
-                let transfer_count = (objects_top_a.len() as f64 * t).ceil() as usize;
+                let transfer_count = (objects_top_a.len() as f32 * t).ceil() as usize;
 
                 objects_top_a.sort_unstable();
                 objects_top_a.reverse();
@@ -318,13 +318,13 @@ impl Vial {
 
     // }
 
-    pub fn in_layer(&self, point: Vec2) -> Option<VialLoc> {
-        let height_per_vol = self.size.y as f64 / self.max_volume;
+    pub fn in_layer(&self, point: Vec2, r: f32) -> Option<VialLoc> {
+        let height_per_vol = self.size.y as f32 / self.max_volume;
 
         let mut height = 0.0;
         for (i, layer) in self.layers.iter().enumerate() {
             height += height_per_vol * layer.volume();
-            if (point.y as f64) < height {
+            if ((point.y + r) as f32) < height {
                 return Some(VialLoc::Layer { index: i, height: height as f32 });
             }
         }
@@ -334,7 +334,7 @@ impl Vial {
         None
     }
 
-    pub fn vol(&self) -> f64 {
+    pub fn vol(&self) -> f32 {
         self.layers.iter().map(|l: &Layer| l.volume()).sum()
     }
 

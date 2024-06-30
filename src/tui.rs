@@ -33,7 +33,7 @@ impl<'a> Widget for VialWidget<'a> {
         // dbg!(area);
         let border = Style::new().bg(vial.glass.clone().into());
         // let view_volume = (area.width - 2) * (area.height - 1);
-        let volume_per_row = vial.max_volume / (area.height - 1) as f64;
+        let volume_per_row = vial.max_volume / (area.height - 1) as f32;
 
         if area.height > 1 {
             // Draw bottom.
