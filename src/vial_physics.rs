@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use super::{Vial, Object, VialLoc};
 use bevy_math::Vec2;
+use crate::constant::*;
 
 use rapier2d::prelude::*;
 
@@ -22,9 +23,6 @@ pub struct VialPhysics {
     event_handler: (),
 }
 
-const G_TO_KG: f32 = 1_000.0;
-const M_TO_MM: f32 = 1_000.0;
-const MM_TO_M: f32 = 0.001;
 
 impl VialPhysics {
     pub fn new(vial: &Vial) -> Self {
@@ -109,7 +107,7 @@ impl VialPhysics {
             let mut collider = ColliderBuilder::ball(obj.size as f32 * MM_TO_M)
                 .restitution(0.7)
                 .build();
-            collider.set_density(2.4 * G_TO_KG); // glass
+            collider.set_density(GLASS_DENSITY); // glass
             collider.user_data = obj.id as u128;
             let handle = self.rigid_body_set.insert(rigid_body);
             self.objects.insert(obj.id, handle);
@@ -130,8 +128,8 @@ impl VialPhysics {
             if let Some(VialLoc::Layer(i)) = vial.in_layer(pos_mm) {
                 if let Some(obj) = map.remove(&rigid_body.user_data) {
                     let s = obj.size as f32 * MM_TO_M;
-                    let density_water = 4.0 * 997.0; // kg/m^2
-                    let buoyancy_force = vector![0.0, (s * s * 9.81 * density_water) as f32];
+                    let density_water = 4.0 * WATER_DENSITY; // kg/m^2
+                    let buoyancy_force = vector![0.0, (s * s * GRAVITY * density_water) as f32];
                     rigid_body.add_force(buoyancy_force, true);
                 }
 
@@ -140,9 +138,7 @@ impl VialPhysics {
     }
 
     pub fn step(&mut self, dt: Real) {
-        // let gravity = vector![0.5, -9.81];
-        let gravity = vector![0.0, -9.81];
-        // let gravity = vector![0.0, 0.0];
+        let gravity = vector![0.0, -GRAVITY];
         // let mut accum = 0.0;
         /* Run the game loop, stepping the simulation once per frame. */
         // self.integration_parameters.dt = dt;

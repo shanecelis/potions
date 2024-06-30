@@ -5,6 +5,7 @@ use std::collections::BinaryHeap;
 // use color_art::Color;
 use bevy_math::{IVec2, Vec2};
 use bevy_color::{Srgba, Mix};
+use quantities::prelude::*;
 use crate::Palette;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -44,6 +45,10 @@ impl From<bevy_color::Srgba> for Color {
             ))
     }
 }
+
+// #[quantity(Length * Length)]
+// #[ref_unit(Square_Meter, "m²", NONE, "Reference ]
+// pub struct Volume;
 
 /// A vial holds liquids and objects in it.
 ///
@@ -422,4 +427,21 @@ impl Vial {
             true
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use quantities::prelude::*;
+
+    #[test]
+    fn test_quantities() {
+        use quantities::length::*;
+        let a = Amnt!(1.0) * METER;
+        let b = Amnt!(1.0) * CENTIMETER;
+        let c = Amnt!(1.0) * MILLIMETER;
+        assert_eq!(a + b, Amnt!(1.01) * METER);
+        assert_eq!(a + c, Amnt!(1.001) * METER);
+        assert_eq!(a.to_string(), "1 m");
+    }
+
 }
