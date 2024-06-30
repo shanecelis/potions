@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use super::{Vial, Object};
+use super::{Vial, Object, VialLoc};
+use bevy_math::Vec2;
 
 use rapier2d::prelude::*;
 
@@ -116,6 +117,25 @@ impl VialPhysics {
             true
         } else {
             false
+        }
+    }
+
+    pub fn add_buoyancy_forces(&mut self, vial: &Vial) {
+
+        let mut map: HashMap<u128, &Object> = vial.objects.iter().map(|o| (o.id, o)).collect();
+        for (handle, rigid_body) in self.rigid_body_set.iter_mut() {
+            rigid_body.reset_forces(true);
+            let p = rigid_body.translation();
+            let pos_mm = Vec2::new(p.x * M_TO_MM, p.y * M_TO_MM);
+            if let Some(VialLoc::Layer(i)) = vial.in_layer(pos_mm) {
+                if let Some(obj) = map.remove(&rigid_body.user_data) {
+                    let s = obj.size as f32 * MM_TO_M;
+                    let density_water = 4.0 * 997.0; // kg/m^2
+                    let buoyancy_force = vector![0.0, (s * s * 9.81 * density_water) as f32];
+                    rigid_body.add_force(buoyancy_force, true);
+                }
+
+            }
         }
     }
 

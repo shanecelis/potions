@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 // use color_art::Color;
 use bevy_math::{IVec2, Vec2};
+use bevy_color::{Srgba, Mix};
 use crate::Palette;
 
 #[derive(Debug, Clone, Deref, DerefMut)]
@@ -12,6 +13,35 @@ pub struct Color(color_art::Color);
 impl From<color_art::Color> for Color {
     fn from(c: color_art::Color) -> Self {
         Self(c)
+    }
+}
+
+impl From<Color> for bevy_color::Srgba {
+    fn from(c: Color) -> Self {
+        fn f(f: u8) -> f32 {
+            f as f32 / 255.0
+        }
+        Srgba {
+            red: f(c.red()),
+            green: f(c.green()),
+            blue: f(c.blue()),
+            alpha: 1.0
+        }
+    }
+}
+
+impl From<bevy_color::Srgba> for Color {
+    fn from(c: bevy_color::Srgba) -> Self {
+        let bevy_color::Srgba { red, green, blue, alpha } = c;
+        fn f(f: f32) -> u8 {
+            (f * 255.0) as u8
+        }
+        Self(color_art::Color::new(
+            f(red),
+            f(green),
+            f(blue),
+            1.0
+            ))
     }
 }
 
@@ -67,6 +97,11 @@ impl Default for Vial {
 pub enum Layer {
     Liquid { id: usize, volume: f64 },
     // Empty,
+}
+
+#[derive(Debug, Clone)]
+pub struct LiquidProp {
+    pub density: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -145,10 +180,6 @@ pub trait Lerp<T> {
         self.lerp(a, b, 1.0).unwrap()
     }
 }
-#[derive(Debug, Clone)]
-pub struct LiquidTransfer;
-#[derive(Debug, Clone)]
-pub struct ObjectTransfer;
 
 impl Lerp<Vial> for Transfer {
     fn lerp(&self, a: &Vial, b: &Vial, t: f64) -> Option<(Vial, Vial)> {
@@ -174,16 +205,20 @@ impl Lerp<Vial> for Transfer {
                     volume: ref mut volume_a,
                     id: id_a,
                 } = a.layers.last_mut().unwrap();
-                // else {
-                //     panic!()
-                // };
                 let total_volume_b = b.vol();
+                if b.layers.len() == 0 {
+                    b.layers.push(Layer::Liquid { volume: 0.0,
+                                                  id: *id_a });
+                }
                 if let Some(Layer::Liquid {
                     volume: ref mut volume_b,
                     id: id_b,
                 }) = b.layers.last_mut()
                 {
-                    assert_eq!(id_a, id_b);
+                    if id_a != id_b {
+                        return None;
+                    }
+                    // assert_eq!(id_a, id_b);
                     let empty_volume_b = b.max_volume - total_volume_b;
                     assert!(empty_volume_b > 0.0);
                     // let t = 1.0;
@@ -261,7 +296,7 @@ impl Lerp<Vial> for Transfer {
     }
 }
 
-enum VialLoc {
+pub enum VialLoc {
     Layer(usize),
     Top,
 }
@@ -333,7 +368,7 @@ impl Vial {
                         }
                     }
                     // _ => None,
-                }),
+                }).or((self.layers.len() == 0).then_some(Transfer::Liquid)),
                 // _ => todo!(),
             })
             .or((self.objects.len() > 0).then_some(Transfer::Object))
@@ -373,12 +408,16 @@ impl Vial {
         if self.layers.len() < 2 {
             false
         } else {
-            let top = self.layers.pop().unwrap();
-            let bottom = self.layers.pop().unwrap();
-            let color = (top * palette[top.id] + bottom * palette[bottom.id]) / (top.volume + bottom.volume);
+            let Layer::Liquid { id: top_id, volume: top_volume } = self.layers.pop().unwrap();
+            let Layer::Liquid { id: bottom_id, volume: bottom_volume } = self.layers.pop().unwrap();
+            let top_color: Srgba = palette[top_id].clone().into();
+            let bottom_color: Srgba = palette[bottom_id].clone().into();
+            // let color = (top_volume * top_color + bottom_volume * bottom_color) / (top_volume + bottom_volume);
+            let p = bottom_volume / (top_volume + bottom_volume);
+            let color: Srgba = top_color.mix(&bottom_color, p as f32);
             let new_id = palette.len();
-            palette.push(color);
-            let mix = Layer::Liquid { volume: top.volume + bottom.volume, id: new_id };
+            palette.push(color.into());
+            let mix = Layer::Liquid { volume: top_volume + bottom_volume, id: new_id };
             self.layers.push(mix);
             true
         }

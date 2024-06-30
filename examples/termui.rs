@@ -75,13 +75,23 @@ impl App {
             levels,
             state: State::Game,
         };
-        app.set_level(app.level_index);
+        app.goto_level(app.level_index);
         app
     }
 
-    pub fn set_level(&mut self, index: usize) {
-        self.potions = self.levels[index].potions.iter().cloned().collect();
-        self.vial_physics = self.potions.iter().map(VialPhysics::new).collect();
+    pub fn goto_level(&mut self, index: usize) -> bool {
+        if index >= self.levels.len() || index < 0 {
+            false
+        } else {
+            self.potions = self.levels[index]
+                .potions
+                .iter()
+                .cloned()
+                .collect();
+            self.vial_physics = self.potions.iter().map(VialPhysics::new).collect();
+            self.level_index = index;
+            true
+        }
     }
 
     pub fn run() -> io::Result<()> {
@@ -104,21 +114,25 @@ impl App {
                     }
                     match app.state {
                         State::NextLevel => {
-                            if app.level_index + 1 >= app.levels.len() {
-                                app.state = State::End;
-                            } else {
-                                app.level_index += 1;
-                                app.potions = app.levels[app.level_index]
-                                    .potions
-                                    .iter()
-                                    .cloned()
-                                    .collect();
+                            if app.goto_level(app.level_index + 1) {
                                 app.state = State::Game;
+                            } else {
+                                app.state = State::End;
                             }
                         }
                         State::Game => match key.code {
-                            KeyCode::Char('n') => { app.step(Duration::from_secs_f32(1.0 / 60.0)); },
-                            KeyCode::Char(' ') => match app.selected {
+                            KeyCode::Char('m') => {
+                                let palette = &mut app.levels[app.level_index].palette;
+                                app.potions[app.cursor].mix(palette);
+                            },
+                            KeyCode::Char('n') => {
+                                app.goto_level(app.level_index + 1);
+                                // app.step(Duration::from_secs_f32(1.0 / 60.0));
+                            },
+                            KeyCode::Char('p') => {
+                                app.goto_level(app.level_index.saturating_sub(1));
+                            },
+                            KeyCode::Char(' ') | KeyCode::Up => match app.selected {
                                 Some(i) => {
                                     if i == app.cursor {
                                         app.selected = None;
@@ -127,12 +141,10 @@ impl App {
                                             app.potions[i].pour(&app.potions[app.cursor])
                                         {
                                             app.state = State::Transfer(transfer, 0.0);
+                                        } else {
+                                            app.selected = None;
+
                                         }
-                                        //     State::Pouring(
-                                        //     app.potions[i].clone(),
-                                        //     app.potions[app.cursor].clone(),
-                                        //     0.0,
-                                        // );
                                     }
                                 }
                                 None => app.selected = Some(app.cursor),
@@ -171,6 +183,7 @@ impl App {
     fn step(&mut self, delta: Duration) {
         for (i, potion) in self.potions.iter_mut().enumerate() {
             let phys = &mut self.vial_physics[i];
+            phys.add_buoyancy_forces(potion);
             phys.step(delta.as_secs_f32());
             phys.project(potion);
         }

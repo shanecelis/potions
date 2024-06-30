@@ -8,6 +8,7 @@ default = [ "ratatui" ]
 
 [dependencies]
 approx = "0.5.1"
+bevy_color = "0.12.3"
 bevy_math = "0.13.2"
 color-art = "0.3.8"
 derived-deref = "2.1.0"
