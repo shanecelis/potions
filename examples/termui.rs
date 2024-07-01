@@ -52,8 +52,6 @@ fn write_levels(dir: &str, levels: &[Level]) -> io::Result<()> {
                 .unwrap()
                 .as_bytes(),
         )?;
-        // let mut file = File::create(format!("levels/{}.toml", i)).expect("file create");
-        // file.write_all(toml::ser::to_string_pretty(&level).unwrap().as_bytes()).expect("write");
     }
     Ok(())
 }
@@ -188,7 +186,7 @@ impl App {
                                     if i == self.cursor {
                                         self.selected = None;
                                     } else if let Some(transfer) =
-                                        self.potions[i].pour(&self.potions[self.cursor])
+                                        dbg!(self.potions[i].pour(&self.potions[self.cursor]))
                                     {
                                         self.state = State::Transfer(transfer, 0.0);
                                     } else {

@@ -192,17 +192,22 @@ impl Lerp<Vial> for Transfer {
         let mut b = b.clone();
         match self {
             Transfer::Liquid => {
-                let top_layer_a = a.layers.len() - 1;
-                let mut objects_top_a: Vec<usize> = a
-                    .objects
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, o)| match a.in_layer(o.pos, o.size) {
-                        Some(VialLoc::Top { .. }) => Some(i),
-                        Some(VialLoc::Layer { index: l, .. }) if l == top_layer_a => Some(i),
-                        _ => None,
-                    })
-                    .collect();
+                let mut objects_top_a: Vec<usize> = if a.layers.len() > 0 {
+                    let top_layer_a = a.layers.len() - 1;
+                    a.objects
+                     .iter()
+                     .enumerate()
+                     .filter_map(|(i, o)| match a.in_layer(o.pos, o.size) {
+                         Some(VialLoc::Top { .. }) => Some(i),
+                         Some(VialLoc::Layer { index: l, .. }) if l == top_layer_a => Some(i),
+                         _ => None,
+                     })
+                     .collect()
+                } else {
+                    return None;
+                    // let r = 0..a.objects.len();
+                    // r.collect()
+                };
                 let Layer::Liquid {
                     volume: ref mut volume_a,
                     id: id_a,
@@ -234,8 +239,8 @@ impl Lerp<Vial> for Transfer {
                         b.discard_empties();
                     } else {
                         // We pour all.
-                        *volume_a = 0.0;
                         *volume_b += *volume_a * t;
+                        *volume_a = 0.0;
                     }
                 }
                 if matches!(a.layers.last().unwrap(), Layer::Liquid { volume: 0.0, .. }) {
@@ -374,7 +379,7 @@ impl Vial {
                         }
                     }
                     // _ => None,
-                }).or((self.layers.is_empty()).then_some(Transfer::Liquid)),
+                }).or((other.layers.is_empty()).then_some(Transfer::Liquid)),
                 // _ => todo!(),
             })
             .or((!self.objects.is_empty()).then_some(Transfer::Object))
@@ -442,6 +447,7 @@ impl Vial {
 #[cfg(test)]
 mod test {
     use quantities::prelude::*;
+    use super::*;
 
     #[test]
     fn test_quantities() {
@@ -452,5 +458,32 @@ mod test {
         assert_eq!(a + b, Amnt!(1.01) * METER);
         assert_eq!(a + c, Amnt!(1.001) * METER);
         assert_eq!(a.to_string(), "1 m");
+    }
+
+    #[test]
+    fn test_pour() {
+        let a = Vial {
+                    layers: vec![Layer::Liquid {
+                        id: 0,
+                        volume: 50.0,
+                    }],
+                    ..Default::default()
+                };
+        let b = Vial::default();
+        assert_eq!(a.vol(), 50.0);
+        assert_eq!(b.vol(), 0.0);
+        if let Some(transfer) = a.pour(&b) {
+            assert!(matches!(transfer, Transfer::Liquid));
+            if let Some((a, b)) = transfer.lerp(&a, &b, 1.0) {
+                assert_eq!(a.vol(), 0.0);
+                assert_eq!(b.vol(), 50.0);
+            } else {
+                assert!(false);
+
+            }
+        } else {
+            assert!(false);
+        };
+
     }
 }
