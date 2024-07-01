@@ -5,7 +5,7 @@ use std::collections::BinaryHeap;
 // use color_art::Color;
 use crate::Palette;
 use bevy_color::{Mix, Srgba};
-use bevy_math::{Vec2};
+use bevy_math::Vec2;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
@@ -34,10 +34,7 @@ impl From<Color> for bevy_color::Srgba {
 impl From<bevy_color::Srgba> for Color {
     fn from(c: bevy_color::Srgba) -> Self {
         let bevy_color::Srgba {
-            red,
-            green,
-            blue,
-            ..
+            red, green, blue, ..
         } = c;
         fn f(f: f32) -> u8 {
             (f * 255.0) as u8
@@ -327,10 +324,7 @@ impl Vial {
         for (i, layer) in self.layers.iter().enumerate() {
             height += height_per_vol * layer.volume();
             if point.y < height + r {
-                return Some(VialLoc::Layer {
-                    index: i,
-                    height,
-                });
+                return Some(VialLoc::Layer { index: i, height });
             }
         }
         if point.y < self.size.y + r {

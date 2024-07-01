@@ -1,7 +1,7 @@
 use super::{Object, Vial, VialLoc};
 use crate::constant::*;
 use bevy_math::Vec2;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use std::f32::consts::PI;
 
 use rapier2d::prelude::*;
@@ -122,7 +122,8 @@ impl VialPhysics {
     }
 
     pub fn add_buoyancy_forces(&mut self, vial: &Vial) {
-        let mut map: HashMap<u128, &Object> = vial.objects.iter().map(|o| (o.id as u128, o)).collect();
+        let mut map: HashMap<u128, &Object> =
+            vial.objects.iter().map(|o| (o.id as u128, o)).collect();
         for (_handle, rigid_body) in self.rigid_body_set.iter_mut() {
             rigid_body.reset_forces(true);
             let p: &Vector<Real> = rigid_body.translation();

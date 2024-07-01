@@ -3,10 +3,10 @@
 //! Originally derived from Ratatui canvas example.
 
 use std::{
-    io::{self, stdout, Stdout, Write, Read},
-    time::{Duration, Instant},
-    fs::{self, File},
     env,
+    fs::{self, File},
+    io::{self, stdout, Read, Stdout, Write},
+    time::{Duration, Instant},
 };
 
 use crossterm::{
@@ -31,9 +31,7 @@ fn main() -> io::Result<()> {
     let mut args = env::args();
     let _ = args.next();
     match args.next().as_deref() {
-        Some("write") => {
-            write_levels(&args.next().expect("dir"), &app.levels)
-        },
+        Some("write") => write_levels(&args.next().expect("dir"), &app.levels),
         Some("read") => {
             app.levels = read_levels(&args.next().expect("dir"))?;
             app.run()
@@ -42,17 +40,18 @@ fn main() -> io::Result<()> {
             eprintln!("error: invalid command {:?}.", command);
             usage()
         }
-        None => {
-            app.run()
-        }
+        None => app.run(),
     }
 }
 
 fn write_levels(dir: &str, levels: &[Level]) -> io::Result<()> {
     for (i, level) in levels.iter().enumerate() {
         let mut file = File::create(format!("{dir}/{}.ron", i))?;
-        file.write_all(ron::ser::to_string_pretty(&level,
-         ron::ser::PrettyConfig::default()).unwrap().as_bytes())?;
+        file.write_all(
+            ron::ser::to_string_pretty(&level, ron::ser::PrettyConfig::default())
+                .unwrap()
+                .as_bytes(),
+        )?;
         // let mut file = File::create(format!("levels/{}.toml", i)).expect("file create");
         // file.write_all(toml::ser::to_string_pretty(&level).unwrap().as_bytes()).expect("write");
     }

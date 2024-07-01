@@ -2,8 +2,8 @@ use super::*;
 use bevy_math::Vec2;
 use derived_deref::{Deref, DerefMut};
 use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
-use std::collections::BinaryHeap;
 use serde::{Deserialize, Serialize};
+use std::collections::BinaryHeap;
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
 pub struct Palette(Vec<Color>);
@@ -28,12 +28,7 @@ impl Palette {
     }
 
     pub fn from_seed<T: Into<HslColor>>(color: T, count: usize) -> Self {
-        // let mut kw = KolorWheel::new(RgbColor { r: 255, g: 0, b: 0 }, heap.len());
-        // let mut kw = KolorWheel::new(HslColor { h: 185.0, s: 70.0, l: 65.0 }, heap.len());
-        let mut kw = KolorWheel::new(
-            color,
-            count,
-        );
+        let mut kw = KolorWheel::new(color, count);
         kw.with_hue(SpinMode::RelativeExcl(-360));
         let colors: Vec<color_art::Color> = kw
             .map(RgbColor::from)
@@ -61,7 +56,6 @@ impl Default for Level {
 }
 
 impl Level {
-
     /// Return unique layer IDs.
     fn layer_ids(vials: &[Vial]) -> impl Iterator<Item = usize> {
         let heap: BinaryHeap<usize> = vials
@@ -77,7 +71,6 @@ impl Level {
             .collect();
         heap.into_iter()
     }
-
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
