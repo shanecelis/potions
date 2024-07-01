@@ -26,6 +26,21 @@ impl Palette {
             Layer::Liquid { id, .. } => self.0[*id].clone(),
         }
     }
+
+    pub fn from_seed<T: Into<HslColor>>(color: T, count: usize) -> Self {
+        // let mut kw = KolorWheel::new(RgbColor { r: 255, g: 0, b: 0 }, heap.len());
+        // let mut kw = KolorWheel::new(HslColor { h: 185.0, s: 70.0, l: 65.0 }, heap.len());
+        let mut kw = KolorWheel::new(
+            color,
+            count,
+        );
+        kw.with_hue(SpinMode::RelativeExcl(-360));
+        let colors: Vec<color_art::Color> = kw
+            .map(RgbColor::from)
+            .map(|RgbColor { r, g, b }| color_art::Color::from_rgb(r, g, b).unwrap())
+            .collect();
+        Palette::new(colors)
+    }
 }
 
 #[derive(Deserialize, Serialize)]
@@ -46,7 +61,9 @@ impl Default for Level {
 }
 
 impl Level {
-    fn new(vials: Vec<Vial>) -> Self {
+
+    /// Return unique layer IDs.
+    fn layer_ids(vials: &[Vial]) -> impl Iterator<Item = usize> {
         let heap: BinaryHeap<usize> = vials
             .iter()
             .flat_map(|v| &v.layers)
@@ -58,28 +75,9 @@ impl Level {
                 }
             })
             .collect();
-        // let mut kw = KolorWheel::new(RgbColor { r: 255, g: 0, b: 0 }, heap.len());
-        // let mut kw = KolorWheel::new(HslColor { h: 185.0, s: 70.0, l: 65.0 }, heap.len());
-        let mut kw = KolorWheel::new(
-            HslColor {
-                h: 240.0,
-                s: 82.0,
-                l: 64.0,
-            },
-            heap.len(),
-        );
-        kw.with_hue(SpinMode::RelativeExcl(-360));
-        let colors: Vec<color_art::Color> = kw
-            .map(RgbColor::from)
-            .map(|RgbColor { r, g, b }| color_art::Color::from_rgb(r, g, b).unwrap())
-            .collect();
-        assert_eq!(colors.len(), heap.len());
-        Self {
-            palette: Palette::new(colors),
-            potions: vials,
-            goal: Goal::Unmix,
-        }
+        heap.into_iter()
     }
+
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -87,13 +85,6 @@ pub enum Goal {
     Unmix,
     BreakSeed,
 }
-
-// #[derive(Debug, Clone)]
-// pub struct UnmixGoal;
-
-// trait Goal {
-//     fn is_complete(&self, potions: &[Vial]) -> bool;
-// }
 
 impl Goal {
     pub fn is_complete(&self, potions: &[Vial]) -> bool {

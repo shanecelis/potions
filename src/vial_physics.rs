@@ -123,7 +123,7 @@ impl VialPhysics {
 
     pub fn add_buoyancy_forces(&mut self, vial: &Vial) {
         let mut map: HashMap<u128, &Object> = vial.objects.iter().map(|o| (o.id as u128, o)).collect();
-        for (handle, rigid_body) in self.rigid_body_set.iter_mut() {
+        for (_handle, rigid_body) in self.rigid_body_set.iter_mut() {
             rigid_body.reset_forces(true);
             let p: &Vector<Real> = rigid_body.translation();
             // let p = r.translation;
