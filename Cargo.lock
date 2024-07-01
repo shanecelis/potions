@@ -3007,6 +3007,7 @@ dependencies = [
  "bevy_color",
  "bevy_math 0.13.2",
  "color-art",
+ "crossbeam",
  "crossterm",
  "derived-deref",
  "kolorwheel",

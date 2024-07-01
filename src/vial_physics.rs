@@ -3,6 +3,7 @@ use crate::constant::*;
 use bevy_math::Vec2;
 use std::collections::HashMap;
 use std::f32::consts::PI;
+use crossbeam::channel::{Receiver, TryRecvError};
 
 use rapier2d::prelude::*;
 
@@ -20,21 +21,29 @@ pub struct VialPhysics {
     ccd_solver: CCDSolver,
     query_pipeline: QueryPipeline,
     objects: HashMap<u128, RigidBodyHandle>,
+    collision_recv: Receiver<CollisionEvent>,
+    contact_force_recv: Receiver<ContactForceEvent>,
     physics_hooks: (),
-    event_handler: (),
+    event_handler: ChannelEventCollector,
 }
 
 impl VialPhysics {
     pub fn new(vial: &Vial) -> Self {
+        let (collision_send, collision_recv) = crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
         let rigid_body_set = RigidBodySet::new();
         let mut collider_set = ColliderSet::new();
         // Convert from mm to m.
         let vial_size_m = vial.size * MM_TO_M;
 
         let wall_width_m = 10.0 * MM_TO_M;
+
+        let collision_type = ActiveCollisionTypes::all();//default() | ActiveCollisionTypes::DYNAMIC_FIXED | ActiveCollisionTypes::KINEMATIC_FIXED;
         /* Create the ground. */
         let collider = ColliderBuilder::cuboid(vial_size_m.x, wall_width_m)
             .translation(vector![0.0, -wall_width_m])
+            // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
 
@@ -43,6 +52,7 @@ impl VialPhysics {
         // Left wall
         let collider = ColliderBuilder::cuboid(wall_width_m, vial_size_m.y)
             .translation(vector![-wall_width_m, vial_size_m.y / 2.0 - wall_width_m])
+            // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
 
@@ -52,6 +62,7 @@ impl VialPhysics {
                 vial_size_m.x + wall_width_m,
                 vial_size_m.y / 2.0 - wall_width_m
             ])
+            // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
 
@@ -70,7 +81,6 @@ impl VialPhysics {
         let ccd_solver = CCDSolver::new();
         let query_pipeline = QueryPipeline::new();
         let physics_hooks = ();
-        let event_handler = ();
         let mut vial_physics = VialPhysics {
             rigid_body_set,
             collider_set,
@@ -86,6 +96,8 @@ impl VialPhysics {
             query_pipeline,
             physics_hooks,
             event_handler,
+            collision_recv,
+            contact_force_recv,
         };
 
         for obj in &vial.objects {
@@ -104,9 +116,13 @@ impl VialPhysics {
                 .ccd_enabled(true)
                 .build();
             rigid_body.user_data = obj.id as u128;
+
+            let collision_type = ActiveCollisionTypes::all(); //default() | ActiveCollisionTypes::DYNAMIC_FIXED | ActiveCollisionTypes::KINEMATIC_FIXED;
             let mut collider = ColliderBuilder::ball(obj.size * MM_TO_M)
-                // .restitution(0.7)
-                .restitution(0.1)
+                .restitution(0.7)
+                .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
+                // .active_collision_types(collision_type)
+                // .restitution(0.1)
                 .build();
             // collider.set_density(GLASS_DENSITY); // glass
             collider.set_density(WATER_DENSITY); // glass
@@ -198,8 +214,33 @@ impl VialPhysics {
             &self.physics_hooks,
             &self.event_handler,
         );
-        //     accum += self.integration_parameters.dt;
-        // }
+    }
+
+    pub fn handle_collisions(&mut self) -> Result<(), TryRecvError> {
+        while let event = self.collision_recv.try_recv() {
+            match event {
+                // Handle the collision event.
+                Ok(collision_event) => {
+                    eprintln!("Received collision event: {:?}", collision_event);
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(x) => return Err(x),
+            }
+        }
+
+        while let event = self.contact_force_recv.try_recv() {
+
+            match event {
+                // Handle the collision event.
+                Ok(contact_force_event) => {
+                    eprintln!("Received contact force event: {:?}", contact_force_event);
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(x) => return Err(x),
+            }
+            // Handle the contact force event.
+        }
+        Ok(())
     }
 
     pub fn project(&mut self, vial: &mut Vial) {

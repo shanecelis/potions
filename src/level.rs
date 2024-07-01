@@ -135,10 +135,12 @@ pub fn levels() -> Vec<Level> {
                     ..Default::default()
                 },
                 Vial {
-                    layers: vec![Layer::Liquid {
+                    layers: vec![
+                        Layer::Liquid {
                         id: 0,
                         volume: 50.0,
-                    }],
+                    }
+                    ],
                     ..Default::default()
                 },
                 Vial {

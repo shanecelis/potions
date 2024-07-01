@@ -186,7 +186,7 @@ impl App {
                                     if i == self.cursor {
                                         self.selected = None;
                                     } else if let Some(transfer) =
-                                        dbg!(self.potions[i].pour(&self.potions[self.cursor]))
+                                        self.potions[i].pour(&self.potions[self.cursor])
                                     {
                                         self.state = State::Transfer(transfer, 0.0);
                                     } else {
@@ -231,6 +231,7 @@ impl App {
             let phys = &mut self.vial_physics[i];
             phys.add_buoyancy_forces(potion);
             phys.step(delta.as_secs_f32());
+            phys.handle_collisions().expect("collision");
             phys.project(potion);
         }
     }

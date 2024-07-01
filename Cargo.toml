@@ -11,6 +11,7 @@ approx = "0.5.1"
 bevy_color = "0.12.3"
 bevy_math = { version = "0.13.2", features = [ "serialize" ] }
 color-art = "0.3.8"
+crossbeam = "0.8.4"
 derived-deref = "2.1.0"
 kolorwheel = "1.1.1"
 quantities = { version = "0.12.1", features = [ "length", "area", "mass", "volume", ] }

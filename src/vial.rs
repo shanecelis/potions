@@ -2,7 +2,6 @@ use approx::abs_diff_eq;
 use derived_deref::{Deref, DerefMut};
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
-// use color_art::Color;
 use crate::Palette;
 use bevy_color::{Mix, Srgba};
 use bevy_math::Vec2;
