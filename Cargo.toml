@@ -9,13 +9,15 @@ default = [ "ratatui" ]
 [dependencies]
 approx = "0.5.1"
 bevy_color = "0.12.3"
-bevy_math = "0.13.2"
+bevy_math = { version = "0.13.2", features = [ "serialize" ] }
 color-art = "0.3.8"
 derived-deref = "2.1.0"
 kolorwheel = "1.1.1"
 quantities = { version = "0.12.1", features = [ "length", "area", "mass", "volume", ] }
 rapier2d = "0.21.0"
 ratatui = { version = "0.26.3", optional = true }
+ron = "0.8.1"
+serde = { version = "1.0.203", features = [ "derive" ] }
 uuid = "1.9.1"
 
 [dev-dependencies]

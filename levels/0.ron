@@ -1,0 +1,61 @@
+(
+    palette: ([
+        ((
+            rgb: (255.0, 0.0, 0.0),
+            alpha: 1.0,
+        )),
+        ((
+            rgb: (0.0, 255.0, 0.0),
+            alpha: 1.0,
+        )),
+        ((
+            rgb: (0.0, 0.0, 255.0),
+            alpha: 1.0,
+        )),
+    ]),
+    potions: [
+        (
+            layers: [],
+            objects: [
+                (
+                    kind: Seed,
+                    pos: (10.0, 10.0),
+                    size: 2.0,
+                    id: 1,
+                ),
+            ],
+            max_volume: 100.0,
+            glass: ((
+                rgb: (255.0, 255.0, 255.0),
+                alpha: 0.5,
+            )),
+            size: (25.0, 75.0),
+        ),
+        (
+            layers: [
+                Liquid(
+                    id: 0,
+                    volume: 50.0,
+                ),
+            ],
+            objects: [],
+            max_volume: 100.0,
+            glass: ((
+                rgb: (255.0, 255.0, 255.0),
+                alpha: 0.5,
+            )),
+            size: (25.0, 75.0),
+        ),
+        (
+            layers: [],
+            objects: [],
+            max_volume: 100.0,
+            glass: ((
+                rgb: (255.0, 255.0, 255.0),
+                alpha: 0.5,
+            )),
+            size: (25.0, 75.0),
+        ),
+    ],
+    goal: BreakSeed,
+)

@@ -5,10 +5,10 @@ use std::collections::BinaryHeap;
 // use color_art::Color;
 use crate::Palette;
 use bevy_color::{Mix, Srgba};
-use bevy_math::{IVec2, Vec2};
-use quantities::prelude::*;
+use bevy_math::{Vec2};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
 pub struct Color(color_art::Color);
 
 impl From<color_art::Color> for Color {
@@ -37,7 +37,7 @@ impl From<bevy_color::Srgba> for Color {
             red,
             green,
             blue,
-            alpha,
+            ..
         } = c;
         fn f(f: f32) -> u8 {
             (f * 255.0) as u8
@@ -74,7 +74,7 @@ impl From<bevy_color::Srgba> for Color {
 ///              +-------------+->   x in [0, w]
 ///
 ///                    Vial
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Vial {
     pub layers: Vec<Layer>,
     pub objects: Vec<Object>,
@@ -98,23 +98,23 @@ impl Default for Vial {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum Layer {
     Liquid { id: usize, volume: f32 },
     // Empty,
 }
 
-#[derive(Debug, Clone)]
-pub struct LiquidProp {
-    pub density: f32,
-}
+// #[derive(Debug, Clone)]
+// pub struct LiquidProp {
+//     pub density: f32,
+// }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Object {
     pub kind: ObjectKind,
     pub pos: Vec2,
     pub size: f32,
-    pub id: u128,
+    pub id: u64,
 }
 
 #[derive(Deref)]
@@ -144,7 +144,7 @@ impl<'a> PartialEq for ByHeight<'a> {
 
 impl<'a> Eq for ByHeight<'a> {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum ObjectKind {
     Seed,
     Creature,
@@ -177,7 +177,7 @@ pub enum Transfer {
     Object,
 }
 
-pub enum TransferError {}
+// pub enum TransferError {}
 
 pub trait Lerp<T> {
     fn lerp(&self, a: &T, b: &T, t: f32) -> Option<(Vial, Vial)>;
@@ -211,7 +211,7 @@ impl Lerp<Vial> for Transfer {
                     id: id_a,
                 } = a.layers.last_mut().unwrap();
                 let total_volume_b = b.vol();
-                if b.layers.len() == 0 {
+                if b.layers.is_empty() {
                     b.layers.push(Layer::Liquid {
                         volume: 0.0,
                         id: *id_a,
@@ -321,19 +321,19 @@ impl Vial {
     // }
 
     pub fn in_layer(&self, point: Vec2, r: f32) -> Option<VialLoc> {
-        let height_per_vol = self.size.y as f32 / self.max_volume;
+        let height_per_vol = self.size.y / self.max_volume;
 
         let mut height = 0.0;
         for (i, layer) in self.layers.iter().enumerate() {
             height += height_per_vol * layer.volume();
-            if ((point.y + r) as f32) < height {
+            if point.y < height + r {
                 return Some(VialLoc::Layer {
                     index: i,
-                    height: height as f32,
+                    height,
                 });
             }
         }
-        if point.y < self.size.y {
+        if point.y < self.size.y + r {
             return Some(VialLoc::Top {
                 height: self.size.y,
             });
@@ -371,7 +371,7 @@ impl Vial {
                         if *color_a == color_b {
                             let empty_volume_b = other.max_volume - other.vol();
                             if empty_volume_b > 0.0 {
-                                return Some(Transfer::Liquid);
+                                Some(Transfer::Liquid)
                             } else {
                                 None
                             }
@@ -380,10 +380,10 @@ impl Vial {
                         }
                     }
                     // _ => None,
-                }).or((self.layers.len() == 0).then_some(Transfer::Liquid)),
+                }).or((self.layers.is_empty()).then_some(Transfer::Liquid)),
                 // _ => todo!(),
             })
-            .or((self.objects.len() > 0).then_some(Transfer::Object))
+            .or((!self.objects.is_empty()).then_some(Transfer::Object))
     }
 
     pub fn transition(&self) -> Option<Transition> {
@@ -432,7 +432,7 @@ impl Vial {
             let bottom_color: Srgba = palette[bottom_id].clone().into();
             // let color = (top_volume * top_color + bottom_volume * bottom_color) / (top_volume + bottom_volume);
             let p = bottom_volume / (top_volume + bottom_volume);
-            let color: Srgba = top_color.mix(&bottom_color, p as f32);
+            let color: Srgba = top_color.mix(&bottom_color, p);
             let new_id = palette.len();
             palette.push(color.into());
             let mix = Layer::Liquid {

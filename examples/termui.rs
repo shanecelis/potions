@@ -3,9 +3,9 @@
 //! Originally derived from Ratatui canvas example.
 
 use std::{
-    io::{self, stdout, Stdout},
-    panic,
+    io::{self, stdout, Stdout, Write, Read},
     time::{Duration, Instant},
+    fs::{self, File},
 };
 
 use crossterm::{
@@ -19,7 +19,41 @@ use potions::vial_physics::VialPhysics;
 use potions::*;
 
 fn main() -> io::Result<()> {
-    App::run()
+    let mut app = App::new();
+    // Write levels stored in code.
+    // for (i, level) in app.levels.iter().enumerate() {
+    //     let mut file = File::create(format!("levels/{}.ron", i)).expect("file create");
+    //     file.write_all(ron::ser::to_string_pretty(&level,
+    //      ron::ser::PrettyConfig::default()).unwrap().as_bytes()).expect("write");
+    //     // let mut file = File::create(format!("levels/{}.toml", i)).expect("file create");
+    //     // file.write_all(toml::ser::to_string_pretty(&level).unwrap().as_bytes()).expect("write");
+    // }
+
+    // Read levels stored in fs.
+    app.levels = read_levels("levels")?;
+
+    // Ok(())
+    app.run()
+}
+
+fn read_levels(dir: &str) -> io::Result<Vec<Level>> {
+    let mut levels = vec![];
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+
+        if path.is_file() {
+            if let Some(extension) = path.extension() {
+                if extension == "ron" {
+                    let mut file = File::open(&path)?;
+                    let mut contents = String::new();
+                    file.read_to_string(&mut contents)?;
+                    levels.push(ron::from_str(&contents).expect("level"));
+                }
+            }
+        }
+    }
+    Ok(levels)
 }
 
 struct App {
@@ -83,23 +117,23 @@ impl App {
         if index >= self.levels.len() || index < 0 {
             false
         } else {
-            self.potions = self.levels[index].potions.iter().cloned().collect();
+            self.potions = self.levels[index].potions.to_vec();
             self.vial_physics = self.potions.iter().map(VialPhysics::new).collect();
             self.level_index = index;
             true
         }
     }
 
-    pub fn run() -> io::Result<()> {
+    pub fn run(&mut self) -> io::Result<()> {
         let mut terminal = init_terminal()?;
-        let mut app = App::new();
+        // let mut self = Self::new();
         let mut last_tick = Instant::now();
         let tick_rate = Duration::from_millis(16);
         // panic::catch_unwind(|| {
         //     let _ = restore_terminal();
         // }).unwrap();
         loop {
-            let _ = terminal.draw(|frame| app.ui(frame));
+            let _ = terminal.draw(|frame| self.ui(frame));
             let timeout = tick_rate.saturating_sub(last_tick.elapsed());
             if event::poll(timeout)? {
                 if let Event::Key(key) = event::read()? {
@@ -108,48 +142,46 @@ impl App {
                         KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => break,
                         _ => {}
                     }
-                    match app.state {
+                    match self.state {
                         State::NextLevel => {
-                            if app.goto_level(app.level_index + 1) {
-                                app.state = State::Game;
+                            if self.goto_level(self.level_index + 1) {
+                                self.state = State::Game;
                             } else {
-                                app.state = State::End;
+                                self.state = State::End;
                             }
                         }
                         State::Game => match key.code {
                             KeyCode::Char('m') => {
-                                let palette = &mut app.levels[app.level_index].palette;
-                                app.potions[app.cursor].mix(palette);
+                                let palette = &mut self.levels[self.level_index].palette;
+                                self.potions[self.cursor].mix(palette);
                             }
                             KeyCode::Char('n') => {
-                                app.goto_level(app.level_index + 1);
-                                // app.step(Duration::from_secs_f32(1.0 / 60.0));
+                                self.goto_level(self.level_index + 1);
+                                // self.step(Duration::from_secs_f32(1.0 / 60.0));
                             }
                             KeyCode::Char('p') => {
-                                app.goto_level(app.level_index.saturating_sub(1));
+                                self.goto_level(self.level_index.saturating_sub(1));
                             }
-                            KeyCode::Char(' ') | KeyCode::Up => match app.selected {
+                            KeyCode::Char(' ') | KeyCode::Up => match self.selected {
                                 Some(i) => {
-                                    if i == app.cursor {
-                                        app.selected = None;
+                                    if i == self.cursor {
+                                        self.selected = None;
+                                    } else if let Some(transfer) =
+                                        self.potions[i].pour(&self.potions[self.cursor])
+                                    {
+                                        self.state = State::Transfer(transfer, 0.0);
                                     } else {
-                                        if let Some(transfer) =
-                                            app.potions[i].pour(&app.potions[app.cursor])
-                                        {
-                                            app.state = State::Transfer(transfer, 0.0);
-                                        } else {
-                                            app.selected = None;
-                                        }
+                                        self.selected = None;
                                     }
                                 }
-                                None => app.selected = Some(app.cursor),
+                                None => self.selected = Some(self.cursor),
                             },
                             KeyCode::Right | KeyCode::Char('l') => {
-                                app.cursor = (app.cursor + 1).rem_euclid(app.potions.len())
+                                self.cursor = (self.cursor + 1).rem_euclid(self.potions.len())
                             }
                             KeyCode::Left | KeyCode::Char('h') => {
-                                app.cursor = (app.cursor + app.potions.len() - 1)
-                                    .rem_euclid(app.potions.len())
+                                self.cursor = (self.cursor + self.potions.len() - 1)
+                                    .rem_euclid(self.potions.len())
                             }
                             _ => {}
                         },
@@ -161,7 +193,7 @@ impl App {
 
             if last_tick.elapsed() >= tick_rate {
                 let current = Instant::now();
-                app.on_tick(current - last_tick);
+                self.on_tick(current - last_tick);
                 last_tick = current;
             }
         }

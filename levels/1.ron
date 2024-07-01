@@ -1,0 +1,53 @@
+(
+    palette: ([
+        ((
+            rgb: (255.0, 0.0, 0.0),
+            alpha: 1.0,
+        )),
+        ((
+            rgb: (0.0, 255.0, 0.0),
+            alpha: 1.0,
+        )),
+        ((
+            rgb: (0.0, 0.0, 255.0),
+            alpha: 1.0,
+        )),
+    ]),
+    potions: [
+        (
+            layers: [
+                Liquid(
+                    id: 0,
+                    volume: 50.0,
+                ),
+                Liquid(
+                    id: 1,
+                    volume: 50.0,
+                ),
+            ],
+            objects: [],
+            max_volume: 100.0,
+            glass: ((
+                rgb: (255.0, 255.0, 255.0),
+                alpha: 0.5,
+            )),
+            size: (25.0, 75.0),
+        ),
+        (
+            layers: [
+                Liquid(
+                    id: 1,
+                    volume: 50.0,
+                ),
+            ],
+            objects: [],
+            max_volume: 100.0,
+            glass: ((
+                rgb: (255.0, 255.0, 255.0),
+                alpha: 0.5,
+            )),
+            size: (25.0, 75.0),
+        ),
+    ],
+    goal: Unmix,
+)

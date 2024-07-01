@@ -731,6 +731,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f06daa26ffb82d90ba772256c0ba286f6c305c392f6976c9822717974805837c"
 dependencies = [
  "glam 0.25.0",
+ "serde",
 ]
 
 [[package]]
@@ -1902,6 +1903,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "151665d9be52f9bb40fc7966565d39666f2d1e69233571b71b87791c7e0528b3"
 dependencies = [
  "bytemuck",
+ "serde",
 ]
 
 [[package]]
@@ -3011,6 +3013,8 @@ dependencies = [
  "quantities",
  "rapier2d",
  "ratatui",
+ "ron",
+ "serde",
  "uuid",
 ]
 

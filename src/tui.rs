@@ -1,4 +1,4 @@
-use super::{Layer, Object, ObjectKind, Palette, Vial};
+use super::{Layer, ObjectKind, Palette, Vial};
 use bevy_math::Vec2;
 use ratatui::prelude::*;
 

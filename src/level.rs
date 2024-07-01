@@ -3,8 +3,9 @@ use bevy_math::Vec2;
 use derived_deref::{Deref, DerefMut};
 use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
 use std::collections::BinaryHeap;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
 pub struct Palette(Vec<Color>);
 
 pub fn rgb(r: u8, g: u8, b: u8) -> Color {
@@ -27,6 +28,7 @@ impl Palette {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct Level {
     pub palette: Palette,
     pub potions: Vec<Vial>,
@@ -68,7 +70,7 @@ impl Level {
         );
         kw.with_hue(SpinMode::RelativeExcl(-360));
         let colors: Vec<color_art::Color> = kw
-            .map(|c| RgbColor::from(c))
+            .map(RgbColor::from)
             .map(|RgbColor { r, g, b }| color_art::Color::from_rgb(r, g, b).unwrap())
             .collect();
         assert_eq!(colors.len(), heap.len());
@@ -80,6 +82,7 @@ impl Level {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Goal {
     Unmix,
     BreakSeed,
