@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::f32::consts::PI;
 use crossbeam::channel::{Receiver, TryRecvError};
 use rand::{prelude::*, distributions::{Distribution, Uniform}};
+use crate::user_data::{UserData, UserDataFlags};
 
 use rapier2d::prelude::*;
 
@@ -28,76 +29,10 @@ pub struct VialPhysics {
     event_handler: ChannelEventCollector,
 }
 
-bitflags::bitflags! {
-    struct UserDataFlags: u8 {
-        const OBJECT = 0b00000001;
-        const WALL = 0b00000010;
-    }
-}
 
-pub struct UserData {
-    flags: UserDataFlags,
-    id: u8,
-}
-
-impl UserData {
-    fn wall(id: u8) -> Self {
-        Self {
-            flags: UserDataFlags::WALL,
-            id
-        }
-    }
-
-    fn object(id: u8) -> Self {
-        Self {
-            flags: UserDataFlags::OBJECT,
-            id
-        }
-    }
-
-    fn is_wall(&self) -> bool {
-        self.flags.contains(UserDataFlags::WALL)
-    }
-
-    fn is_object(&self) -> bool {
-        self.flags.contains(UserDataFlags::OBJECT)
-    }
-}
-
-impl From<UserData> for i64 {
-    fn from(user_data: UserData) -> i64 {
-        (user_data.flags.bits() << 8 | user_data.id).into()
-    }
-}
-
-impl From<i64> for UserData {
-    fn from(n: i64) -> UserData {
-        UserData {
-            id: (n & 0xff) as u8,
-            flags: UserDataFlags::from_bits((n >> 8 & 0xff) as u8).expect("flags")
-        }
-    }
-}
-
-impl From<UserData> for u128 {
-    fn from(user_data: UserData) -> u128 {
-        (user_data.flags.bits() << 8 | user_data.id).into()
-    }
-}
-
-impl From<u128> for UserData {
-    fn from(n: u128) -> UserData {
-        UserData {
-            id: (n & 0xff) as u8,
-            flags: UserDataFlags::from_bits((n >> 8 & 0xff) as u8).expect("flags")
-        }
-    }
-}
-
-const WALL_MASK: u128 = 1 << 8;
-const BOTTOM_WALL_ID: u128 = 1 << 8 + 1;
-const LEFT_WALL_ID: u128 = 1 << 8 + 2;
-const RIGHT_WALL_ID: u128 = 1 << 8 + 3;
+const GROUND_ID: u8 = 1;
+const LEFT_WALL_ID: u8 = 2;
+const RIGHT_WALL_ID: u8 = 3;
 
 impl VialPhysics {
     pub fn new(vial: &Vial) -> Self {
@@ -115,7 +50,7 @@ impl VialPhysics {
         /* Create the ground. */
         let collider = ColliderBuilder::cuboid(vial_size_m.x, wall_width_m)
             .translation(vector![0.0, -wall_width_m])
-            .user_data(BOTTOM_WALL_ID)
+            .user_data(UserData::wall(GROUND_ID).into())
             // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
@@ -126,7 +61,7 @@ impl VialPhysics {
         let collider = ColliderBuilder::cuboid(wall_width_m, vial_size_m.y)
             .translation(vector![-wall_width_m, vial_size_m.y / 2.0 - wall_width_m])
             // .active_collision_types(collision_type)
-            .user_data(LEFT_WALL_ID)
+            .user_data(UserData::wall(LEFT_WALL_ID).into())
             .build();
         collider_set.insert(collider);
 
@@ -136,7 +71,7 @@ impl VialPhysics {
                 vial_size_m.x + wall_width_m,
                 vial_size_m.y / 2.0 - wall_width_m
             ])
-            .user_data(RIGHT_WALL_ID)
+            .user_data(UserData::wall(RIGHT_WALL_ID).into())
             // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
@@ -307,7 +242,7 @@ impl VialPhysics {
         );
     }
 
-    pub fn handle_collisions(&mut self) -> Result<(), TryRecvError> {
+    pub fn handle_collisions(&mut self, objects: &mut HashMap<u128, &mut Object>) -> Result<(), TryRecvError> {
         use rapier2d::geometry::CollisionEvent::*;
         while let event = self.collision_recv.try_recv() {
             match event {
@@ -316,12 +251,25 @@ impl VialPhysics {
                     // eprintln!("Received collision event: {:?}", collision_event);
                     match collision_event {
                         Started(a, b, f) => {
-                            let a = self.collider_set.get(a).unwrap();
-                            let b = self.collider_set.get(b).unwrap();
-                            let user_data_a: UserData = a.user_data.into() else { continue; };
-
-
-
+                            let mut a = self.collider_set.get(a).unwrap();
+                            let mut b = self.collider_set.get(b).unwrap();
+                            let mut user_data_a: UserData = a.user_data.into() else { continue; };
+                            let mut user_data_b: UserData = b.user_data.into() else { continue; };
+                            // WALL flag is bigger than OBJECT flag.
+                            if user_data_a.flags.bits() > user_data_b.flags.bits() {
+                                (a, b) = (b, a);
+                                (user_data_a, user_data_b) = (user_data_b, user_data_a);
+                            }
+                            if user_data_a.is_object() && user_data_b.is_wall() && user_data_b.id == GROUND_ID {
+                                if let Some(mut obj) = objects.get_mut(&a.user_data) {
+                                    if obj.flags.contains(ObjectFlags::EXPECT_BREAK) {
+                                        obj.flags.remove(ObjectFlags::EXPECT_BREAK);
+                                        obj.flags.insert(ObjectFlags::BREAK);
+                                    }
+                                } else {
+                                    continue;
+                                }
+                            }
                         },
                         _ => ()
                     }

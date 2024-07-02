@@ -4,6 +4,7 @@ use derived_deref::{Deref, DerefMut};
 use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
 use serde::{Deserialize, Serialize};
 use std::collections::BinaryHeap;
+use crate::user_data::{UserData, UserDataFlags};
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
 pub struct Palette(Vec<Color>);
@@ -111,7 +112,7 @@ pub fn levels() -> Vec<Level> {
                             kind: ObjectKind::Seed,
                             pos: Vec2::new(10.0, 10.0),
                             size: 2.0,
-                            id: 1,
+                            id: UserData::object(1).into(),
                             ..Default::default()
                         },
                         // Object {

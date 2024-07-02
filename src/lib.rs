@@ -3,9 +3,12 @@ mod level;
 pub mod tui;
 mod vial;
 pub mod vial_physics;
+mod object;
+pub mod user_data;
 
 pub use level::{levels, Level, Palette};
-pub use vial::{Color, Layer, Lerp, Object, ObjectKind, Transfer, Transition, Vial, VialLoc, ObjectFlags};
+pub use vial::{Color, Layer, Lerp, Transfer, Transition, Vial, VialLoc};
+pub use object::{Object, ObjectKind, ObjectFlags, ByHeight};
 
 #[cfg(test)]
 mod tests {

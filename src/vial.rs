@@ -6,6 +6,8 @@ use crate::Palette;
 use bevy_color::{Mix, Srgba};
 use bevy_math::Vec2;
 use serde::{Deserialize, Serialize};
+use super::{Object, ObjectKind, ObjectFlags, ByHeight};
+use crate::user_data::{UserData};
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
 pub struct Color(color_art::Color);
@@ -106,57 +108,6 @@ pub enum Layer {
 // }
 //
 
-bitflags::bitflags! {
-    #[derive(Debug, Clone, Deserialize, Serialize, Default)]
-    pub struct ObjectFlags: u8 {
-        const ENTER_VIAL = 0b00000001;
-        const EXPECT_BREAK = 0b00000010;
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
-pub struct Object {
-    pub kind: ObjectKind,
-    pub pos: Vec2,
-    pub size: f32,
-    pub id: u64,
-    pub flags: ObjectFlags,
-}
-
-#[derive(Deref)]
-pub struct ByHeight<'a>(usize, #[target] &'a Object);
-
-impl<'a> PartialOrd for ByHeight<'a> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.pos.y.partial_cmp(&other.pos.y)
-    }
-}
-
-impl<'a> Ord for ByHeight<'a> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.pos
-            .y
-            .partial_cmp(&other.pos.y)
-            .or(abs_diff_eq!(self.pos.y, other.pos.y, epsilon = 0.1).then_some(Ordering::Equal))
-            .unwrap_or(Ordering::Less)
-    }
-}
-
-impl<'a> PartialEq for ByHeight<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        self.pos.y.eq(&other.pos.y)
-    }
-}
-
-impl<'a> Eq for ByHeight<'a> {}
-
-#[derive(Debug, Clone, Deserialize, Serialize, Default)]
-pub enum ObjectKind {
-    #[default]
-    Seed,
-    Creature,
-    Plant,
-}
 
 // pub enum Liquid {
 //     Water,
@@ -296,7 +247,7 @@ impl Lerp<Vial> for Transfer {
                     // obj.pos.y = b.size.y * 0.8;
                     //
                     obj.flags |= ObjectFlags::ENTER_VIAL;
-                    if b.layers.is_empty() {
+                    if b.layers.is_empty() && obj.size > 1.0 {
                         obj.flags |= ObjectFlags::EXPECT_BREAK;
                     }
                     b.objects.push(obj);
@@ -399,7 +350,25 @@ impl Vial {
     }
 
     pub fn transition(&self) -> Option<Transition> {
-        None
+        if !self.objects.iter().any(|o| o.flags.contains(ObjectFlags::BREAK)) {
+            None
+        } else {
+            let mut a = self.clone();
+            let mut additions = vec![];
+
+            let mut next_index = a.objects.len();
+            for obj in &mut a.objects {
+                if obj.flags.contains(ObjectFlags::BREAK) {
+                    obj.flags.remove(ObjectFlags::BREAK);
+                    obj.size /= 2.0;
+                    let mut o = obj.clone();
+                    o.id = UserData::object(next_index as u8).into();
+                    next_index += 1;
+                    additions.push(o);
+                }
+            }
+            a.objects.extend(additions);
+            Some(Transition::BreakSeed(a))
         // if self.layers.len() == 0 {
         //     let mut a = self.clone();
         //     let mut accum = vec![];
@@ -426,6 +395,7 @@ impl Vial {
         // } else {
         //     None
         // }
+        }
     }
 
     pub fn mix(&mut self, palette: &mut Palette) -> bool {

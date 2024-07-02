@@ -7,6 +7,7 @@ use std::{
     fs::{self, File},
     io::{self, stdout, Read, Stdout, Write},
     time::{Duration, Instant},
+    collections::HashMap,
 };
 
 use crossterm::{
@@ -174,9 +175,11 @@ impl App {
                                 let palette = &mut self.levels[self.level_index].palette;
                                 self.potions[self.cursor].mix(palette);
                             }
+                            KeyCode::Char('r') => {
+                                self.goto_level(self.level_index);
+                            }
                             KeyCode::Char('n') => {
                                 self.goto_level(self.level_index + 1);
-                                // self.step(Duration::from_secs_f32(1.0 / 60.0));
                             }
                             KeyCode::Char('p') => {
                                 self.goto_level(self.level_index.saturating_sub(1));
@@ -232,7 +235,10 @@ impl App {
             phys.kick_on_enter(potion);
             phys.add_buoyancy_forces(potion);
             phys.step(delta.as_secs_f32());
-            phys.handle_collisions().expect("collision");
+
+            let mut map: HashMap<u128, &mut Object> =
+                potion.objects.iter_mut().map(|o| (o.id as u128, o)).collect();
+            phys.handle_collisions(&mut map).expect("collision");
             phys.project(potion);
         }
     }
@@ -273,6 +279,7 @@ impl App {
                         Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) => {
                             sync.push(i);
                             *potion = vial;
+
                         }
                         None => (),
                     }
@@ -281,11 +288,21 @@ impl App {
             State::NextLevel => (),
             State::End => (),
         }
-        for i in sync {
-            self.sync_objects(i);
+        for i in &sync {
+            self.sync_objects(*i);
         }
         if matches!(self.state, State::Game) {
             self.step(delta);
+            if ! sync.is_empty() {
+                if self.levels[self.level_index]
+                    .goal
+                    .is_complete(&self.potions)
+                {
+                    self.state = State::NextLevel;
+                } else {
+                    self.state = State::Game;
+                }
+            }
         }
     }
 
