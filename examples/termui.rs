@@ -229,6 +229,7 @@ impl App {
     fn step(&mut self, delta: Duration) {
         for (i, potion) in self.potions.iter_mut().enumerate() {
             let phys = &mut self.vial_physics[i];
+            phys.kick_on_enter(potion);
             phys.add_buoyancy_forces(potion);
             phys.step(delta.as_secs_f32());
             phys.handle_collisions().expect("collision");

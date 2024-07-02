@@ -5,7 +5,7 @@ mod vial;
 pub mod vial_physics;
 
 pub use level::{levels, Level, Palette};
-pub use vial::{Color, Layer, Lerp, Object, ObjectKind, Transfer, Transition, Vial, VialLoc};
+pub use vial::{Color, Layer, Lerp, Object, ObjectKind, Transfer, Transition, Vial, VialLoc, ObjectFlags};
 
 #[cfg(test)]
 mod tests {

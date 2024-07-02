@@ -104,13 +104,23 @@ pub enum Layer {
 // pub struct LiquidProp {
 //     pub density: f32,
 // }
+//
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Deserialize, Serialize, Default)]
+    pub struct ObjectFlags: u8 {
+        const ENTER_VIAL = 0b00000001;
+        const EXPECT_BREAK = 0b00000010;
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Object {
     pub kind: ObjectKind,
     pub pos: Vec2,
     pub size: f32,
     pub id: u64,
+    pub flags: ObjectFlags,
 }
 
 #[derive(Deref)]
@@ -140,8 +150,9 @@ impl<'a> PartialEq for ByHeight<'a> {
 
 impl<'a> Eq for ByHeight<'a> {}
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub enum ObjectKind {
+    #[default]
     Seed,
     Creature,
     Plant,
@@ -268,9 +279,7 @@ impl Lerp<Vial> for Transfer {
                     .enumerate()
                     .map(|(i, o)| ByHeight(i, o))
                     .collect();
-                let Some(ByHeight(top_index, top)) = heap.pop() else {
-                    panic!()
-                };
+                let ByHeight(top_index, top) = heap.pop().expect("object");
                 let mut transfers = vec![];
                 transfers.push(top_index);
                 while let Some(ByHeight(i, obj)) = heap.pop() {
@@ -285,6 +294,11 @@ impl Lerp<Vial> for Transfer {
                     // XXX: This is causing a panic.
                     obj.pos.y = b.size.y;
                     // obj.pos.y = b.size.y * 0.8;
+                    //
+                    obj.flags |= ObjectFlags::ENTER_VIAL;
+                    if b.layers.is_empty() {
+                        obj.flags |= ObjectFlags::EXPECT_BREAK;
+                    }
                     b.objects.push(obj);
                 }
 

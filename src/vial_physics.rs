@@ -1,9 +1,10 @@
-use super::{Object, Vial, VialLoc};
+use super::{Object, Vial, VialLoc, ObjectFlags};
 use crate::constant::*;
 use bevy_math::Vec2;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use crossbeam::channel::{Receiver, TryRecvError};
+use rand::{prelude::*, distributions::{Distribution, Uniform}};
 
 use rapier2d::prelude::*;
 
@@ -27,6 +28,77 @@ pub struct VialPhysics {
     event_handler: ChannelEventCollector,
 }
 
+bitflags::bitflags! {
+    struct UserDataFlags: u8 {
+        const OBJECT = 0b00000001;
+        const WALL = 0b00000010;
+    }
+}
+
+pub struct UserData {
+    flags: UserDataFlags,
+    id: u8,
+}
+
+impl UserData {
+    fn wall(id: u8) -> Self {
+        Self {
+            flags: UserDataFlags::WALL,
+            id
+        }
+    }
+
+    fn object(id: u8) -> Self {
+        Self {
+            flags: UserDataFlags::OBJECT,
+            id
+        }
+    }
+
+    fn is_wall(&self) -> bool {
+        self.flags.contains(UserDataFlags::WALL)
+    }
+
+    fn is_object(&self) -> bool {
+        self.flags.contains(UserDataFlags::OBJECT)
+    }
+}
+
+impl From<UserData> for i64 {
+    fn from(user_data: UserData) -> i64 {
+        (user_data.flags.bits() << 8 | user_data.id).into()
+    }
+}
+
+impl From<i64> for UserData {
+    fn from(n: i64) -> UserData {
+        UserData {
+            id: (n & 0xff) as u8,
+            flags: UserDataFlags::from_bits((n >> 8 & 0xff) as u8).expect("flags")
+        }
+    }
+}
+
+impl From<UserData> for u128 {
+    fn from(user_data: UserData) -> u128 {
+        (user_data.flags.bits() << 8 | user_data.id).into()
+    }
+}
+
+impl From<u128> for UserData {
+    fn from(n: u128) -> UserData {
+        UserData {
+            id: (n & 0xff) as u8,
+            flags: UserDataFlags::from_bits((n >> 8 & 0xff) as u8).expect("flags")
+        }
+    }
+}
+
+const WALL_MASK: u128 = 1 << 8;
+const BOTTOM_WALL_ID: u128 = 1 << 8 + 1;
+const LEFT_WALL_ID: u128 = 1 << 8 + 2;
+const RIGHT_WALL_ID: u128 = 1 << 8 + 3;
+
 impl VialPhysics {
     pub fn new(vial: &Vial) -> Self {
         let (collision_send, collision_recv) = crossbeam::channel::unbounded();
@@ -43,6 +115,7 @@ impl VialPhysics {
         /* Create the ground. */
         let collider = ColliderBuilder::cuboid(vial_size_m.x, wall_width_m)
             .translation(vector![0.0, -wall_width_m])
+            .user_data(BOTTOM_WALL_ID)
             // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
@@ -53,6 +126,7 @@ impl VialPhysics {
         let collider = ColliderBuilder::cuboid(wall_width_m, vial_size_m.y)
             .translation(vector![-wall_width_m, vial_size_m.y / 2.0 - wall_width_m])
             // .active_collision_types(collision_type)
+            .user_data(LEFT_WALL_ID)
             .build();
         collider_set.insert(collider);
 
@@ -62,6 +136,7 @@ impl VialPhysics {
                 vial_size_m.x + wall_width_m,
                 vial_size_m.y / 2.0 - wall_width_m
             ])
+            .user_data(RIGHT_WALL_ID)
             // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
@@ -134,6 +209,22 @@ impl VialPhysics {
             true
         } else {
             false
+        }
+    }
+
+    pub fn kick_on_enter(&mut self, vial: &mut Vial) {
+        let mut rng = rand::thread_rng();
+        let kick_range = Uniform::from(-0.1..1.0);
+        let mut map: HashMap<u128, &mut Object> =
+            vial.objects.iter_mut().map(|o| (o.id as u128, o)).collect();
+        for (_handle, rigid_body) in self.rigid_body_set.iter_mut() {
+            if let Some(obj) = map.remove(&rigid_body.user_data) {
+                if obj.flags.contains(ObjectFlags::ENTER_VIAL) {
+                    let x: f32 = rng.sample(&kick_range);
+                    rigid_body.set_linvel(vector![x, 0.0], true);
+                    obj.flags.remove(ObjectFlags::ENTER_VIAL);
+                }
+            }
         }
     }
 
@@ -217,11 +308,23 @@ impl VialPhysics {
     }
 
     pub fn handle_collisions(&mut self) -> Result<(), TryRecvError> {
+        use rapier2d::geometry::CollisionEvent::*;
         while let event = self.collision_recv.try_recv() {
             match event {
                 // Handle the collision event.
                 Ok(collision_event) => {
-                    eprintln!("Received collision event: {:?}", collision_event);
+                    // eprintln!("Received collision event: {:?}", collision_event);
+                    match collision_event {
+                        Started(a, b, f) => {
+                            let a = self.collider_set.get(a).unwrap();
+                            let b = self.collider_set.get(b).unwrap();
+                            let user_data_a: UserData = a.user_data.into() else { continue; };
+
+
+
+                        },
+                        _ => ()
+                    }
                 }
                 Err(TryRecvError::Empty) => break,
                 Err(x) => return Err(x),
@@ -233,7 +336,7 @@ impl VialPhysics {
             match event {
                 // Handle the collision event.
                 Ok(contact_force_event) => {
-                    eprintln!("Received contact force event: {:?}", contact_force_event);
+                    // eprintln!("Received contact force event: {:?}", contact_force_event);
                 }
                 Err(TryRecvError::Empty) => break,
                 Err(x) => return Err(x),

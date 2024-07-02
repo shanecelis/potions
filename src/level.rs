@@ -112,6 +112,7 @@ pub fn levels() -> Vec<Level> {
                             pos: Vec2::new(10.0, 10.0),
                             size: 2.0,
                             id: 1,
+                            ..Default::default()
                         },
                         // Object {
                         //     kind: ObjectKind::Seed,
