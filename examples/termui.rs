@@ -1,7 +1,8 @@
 //! Terminal UI for potions game
 //!
 //! Originally derived from Ratatui canvas example.
-
+use bevy_ecs::prelude::*;
+use bevy_app::AppExit;
 use std::{
     env,
     fs::{self, File},
@@ -15,6 +16,7 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
+use derived_deref::{Deref, DerefMut};
 use ratatui::{layout::Flex, prelude::*, widgets::*};
 
 use potions::vial_physics::VialPhysics;
@@ -28,20 +30,57 @@ fn usage() -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    let mut app = App::new();
+    let mut app = bevy_app::App::new();
+    let mut my_app = App::new();
     let mut args = env::args();
     let _ = args.next();
     match args.next().as_deref() {
-        Some("write") => write_levels(&args.next().expect("dir"), &app.levels),
+        Some("write") => {
+            return write_levels(&args.next().expect("dir"), &my_app.levels);
+        }
         Some("read") => {
-            app.levels = read_levels(&args.next().expect("dir"))?;
-            app.run()
+            my_app.levels = read_levels(&args.next().expect("dir"))?;
         }
         Some(command) => {
             eprintln!("error: invalid command {:?}.", command);
-            usage()
+            return usage();
         }
-        None => app.run(),
+        None => ()
+    }
+    let mut terminal = init_terminal()?;
+    app.insert_resource(my_app);
+    app.insert_resource(Term(terminal));
+    app.add_systems(bevy_app::Update, update_app);
+    app.add_systems(bevy_app::Last, check_exit);
+    // let mut last_tick = Instant::now();
+    // let mut r = Ok(true);
+    // while matches!(r, Ok(true)) {
+    let mut cont = true;
+    while cont {
+        // r = my_app.update(&mut terminal);
+        app.update();
+
+        let my_app = app.world.resource::<App>();
+        if matches!(my_app.state, State::End) {
+            cont = false;
+        }
+    }
+    restore_terminal()
+}
+
+fn update_app(mut my_app: ResMut<App>,
+              mut terminal: ResMut<Term>,
+              mut app_exit_events: ResMut<Events<bevy_app::AppExit>>
+) {
+    let r = my_app.update(&mut terminal);
+    if !matches!(r, Ok(true)) {
+        app_exit_events.send(bevy_app::AppExit);
+    }
+}
+
+fn check_exit(mut app_exit: EventReader<AppExit>, mut my_app: ResMut<App>) {
+    if app_exit.read().next().is_some() {
+        my_app.state = State::End;
     }
 }
 
@@ -76,7 +115,7 @@ fn read_levels(dir: &str) -> io::Result<Vec<Level>> {
     }
     Ok(levels)
 }
-
+#[derive(Resource)]
 struct App {
     tick_count: u64,
     potions: Vec<Vial>,
@@ -87,6 +126,9 @@ struct App {
     level_index: usize,
     state: State,
 }
+
+#[derive(Resource, Deref, DerefMut)]
+struct Term(Terminal<CrosstermBackend<Stdout>>);
 
 #[derive(Debug)]
 enum State {
@@ -119,7 +161,7 @@ fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
 impl App {
     fn new() -> App {
         let levels = levels();
-        let mut app = App {
+        let mut my_app = App {
             tick_count: 0,
             cursor: 0,
             selected: None,
@@ -129,8 +171,8 @@ impl App {
             levels,
             state: State::Game,
         };
-        app.goto_level(app.level_index);
-        app
+        my_app.goto_level(my_app.level_index);
+        my_app
     }
 
     pub fn goto_level(&mut self, index: usize) -> bool {
@@ -144,23 +186,19 @@ impl App {
         }
     }
 
-    pub fn run(&mut self) -> io::Result<()> {
-        let mut terminal = init_terminal()?;
-        // let mut self = Self::new();
-        let mut last_tick = Instant::now();
-        let tick_rate = Duration::from_millis(16);
-        // panic::catch_unwind(|| {
-        //     let _ = restore_terminal();
-        // }).unwrap();
-        loop {
-            let _ = terminal.draw(|frame| self.ui(frame));
-            let timeout = tick_rate.saturating_sub(last_tick.elapsed());
+    pub fn update(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> io::Result<bool> {
+        let _ = terminal.draw(|frame| self.ui(frame));
+
+        let timeout = Duration::from_millis(16);
             if event::poll(timeout)? {
                 if let Event::Key(key) = event::read()? {
-                    match key.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => break,
-                        _ => {}
+                    let quit = match key.code {
+                        KeyCode::Char('q') => true,
+                        KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => true,
+                        _ => false
+                    };
+                    if quit {
+                        return Ok(false);
                     }
                     match self.state {
                         State::NextLevel => {
@@ -213,14 +251,13 @@ impl App {
                 }
             }
 
-            if last_tick.elapsed() >= tick_rate {
-                let current = Instant::now();
-                self.on_tick(current - last_tick);
-                last_tick = current;
-            }
-        }
-        restore_terminal()?;
-        Ok(())
+            // if last_tick.elapsed() >= tick_rate {
+            //     let current = Instant::now();
+                self.on_tick();
+            //     last_tick = current;
+            // }
+        // }
+        Ok(true)
     }
 
     fn sync_objects(&mut self, vial_index: usize) {
@@ -229,12 +266,12 @@ impl App {
         }
     }
 
-    fn step(&mut self, delta: Duration) {
+    fn step(&mut self) {
         for (i, potion) in self.potions.iter_mut().enumerate() {
             let phys = &mut self.vial_physics[i];
             phys.kick_on_enter(potion);
             phys.add_buoyancy_forces(potion);
-            phys.step(delta.as_secs_f32());
+            phys.step();
 
             let mut map: HashMap<u128, &mut Object> =
                 potion.objects.iter_mut().map(|o| (o.id as u128, o)).collect();
@@ -243,7 +280,7 @@ impl App {
         }
     }
 
-    fn on_tick(&mut self, delta: Duration) {
+    fn on_tick(&mut self) {
         self.tick_count += 1;
         let mut sync = vec![];
         match self.state {
@@ -292,7 +329,7 @@ impl App {
             self.sync_objects(*i);
         }
         if matches!(self.state, State::Game) {
-            self.step(delta);
+            self.step();
             if ! sync.is_empty() {
                 if self.levels[self.level_index]
                     .goal

@@ -218,7 +218,7 @@ impl VialPhysics {
         }
     }
 
-    pub fn step(&mut self, _dt: Real) {
+    pub fn step(&mut self) {
         let gravity = vector![0.0, -GRAVITY];
         // let gravity = vector![0.0, 0.0];
         // let mut accum = 0.0;

@@ -8,7 +8,9 @@ default = [ "ratatui" ]
 
 [dependencies]
 approx = "0.5.1"
+bevy_app = "0.13.2"
 bevy_color = "0.12.3"
+bevy_ecs = "0.13.2"
 bevy_math = { version = "0.13.2", features = [ "serialize" ] }
 bitflags = "2.6.0"
 color-art = "0.3.8"
