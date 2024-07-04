@@ -1,9 +1,6 @@
 use approx::abs_diff_eq;
-use derived_deref::{Deref, DerefMut};
+use derived_deref::{Deref};
 use std::cmp::Ordering;
-use std::collections::BinaryHeap;
-use crate::Palette;
-use bevy_color::{Mix, Srgba};
 use bevy_math::Vec2;
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +26,7 @@ pub struct Object {
 pub struct ByHeight<'a>(pub usize, #[target] pub &'a Object);
 
 impl<'a> PartialOrd for ByHeight<'a> {
+    #[allow(clippy::non_canonical_partial_ord_impl)]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.pos.y.partial_cmp(&other.pos.y)
     }

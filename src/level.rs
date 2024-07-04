@@ -4,7 +4,7 @@ use derived_deref::{Deref, DerefMut};
 use kolorwheel::{HslColor, KolorWheel, RgbColor, SpinMode};
 use serde::{Deserialize, Serialize};
 use std::collections::BinaryHeap;
-use crate::user_data::{UserData, UserDataFlags};
+use crate::user_data::{UserData};
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
 pub struct Palette(Vec<Color>);
@@ -58,16 +58,14 @@ impl Default for Level {
 
 impl Level {
     /// Return unique layer IDs.
-    fn layer_ids(vials: &[Vial]) -> impl Iterator<Item = usize> {
+    #[allow(irrefutable_let_patterns)]
+    pub fn layer_ids(vials: &[Vial]) -> impl Iterator<Item = usize> {
         let heap: BinaryHeap<usize> = vials
             .iter()
             .flat_map(|v| &v.layers)
-            .filter_map(|l| {
-                if let Layer::Liquid { id, .. } = l {
-                    Some(*id)
-                } else {
-                    None
-                }
+            .map(|l| {
+                let Layer::Liquid { id, .. } = l;
+                *id
             })
             .collect();
         heap.into_iter()

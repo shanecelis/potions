@@ -5,6 +5,7 @@ mod vial;
 pub mod vial_physics;
 mod object;
 pub mod user_data;
+pub mod script;
 
 pub use level::{levels, Level, Palette};
 pub use vial::{Color, Layer, Lerp, Transfer, Transition, Vial, VialLoc};

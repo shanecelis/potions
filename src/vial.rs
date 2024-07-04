@@ -1,12 +1,11 @@
 use approx::abs_diff_eq;
 use derived_deref::{Deref, DerefMut};
-use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use crate::Palette;
 use bevy_color::{Mix, Srgba};
 use bevy_math::Vec2;
 use serde::{Deserialize, Serialize};
-use super::{Object, ObjectKind, ObjectFlags, ByHeight};
+use super::{Object, ObjectFlags, ByHeight};
 use crate::user_data::{UserData};
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
@@ -153,7 +152,7 @@ impl Lerp<Vial> for Transfer {
         let mut b = b.clone();
         match self {
             Transfer::Liquid => {
-                let mut objects_top_a: Vec<usize> = if a.layers.len() > 0 {
+                let mut objects_top_a: Vec<usize> = if !a.layers.is_empty() {
                     let top_layer_a = a.layers.len() - 1;
                     a.objects
                      .iter()
@@ -212,8 +211,9 @@ impl Lerp<Vial> for Transfer {
 
                 objects_top_a.sort_unstable();
                 objects_top_a.reverse();
-                for i in 0..transfer_count {
-                    let mut obj = a.objects.swap_remove(objects_top_a[i]);
+                // for i in 0..transfer_count {
+                for i in objects_top_a.into_iter().take(transfer_count) {
+                    let mut obj = a.objects.swap_remove(i);
                     // XXX: This is causing a panic.
                     obj.pos.y = b.size.y;
                     // obj.pos.y = b.size.y * 0.8;
@@ -221,7 +221,7 @@ impl Lerp<Vial> for Transfer {
                 }
             }
             Transfer::Object => {
-                if a.objects.len() <= 0 {
+                if a.objects.is_empty() {
                     return None;
                 }
                 let mut heap: BinaryHeap<ByHeight> = a
@@ -461,11 +461,10 @@ mod test {
                 assert_eq!(a.vol(), 0.0);
                 assert_eq!(b.vol(), 50.0);
             } else {
-                assert!(false);
-
+                panic!();
             }
         } else {
-            assert!(false);
+            panic!();
         };
 
     }

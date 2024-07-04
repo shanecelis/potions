@@ -4,8 +4,8 @@ use bevy_math::Vec2;
 use std::collections::HashMap;
 use std::f32::consts::PI;
 use crossbeam::channel::{Receiver, TryRecvError};
-use rand::{prelude::*, distributions::{Distribution, Uniform}};
-use crate::user_data::{UserData, UserDataFlags};
+use rand::{prelude::*, distributions::{Uniform}};
+use crate::user_data::UserData;
 
 use rapier2d::prelude::*;
 
@@ -46,12 +46,10 @@ impl VialPhysics {
 
         let wall_width_m = 10.0 * MM_TO_M;
 
-        let collision_type = ActiveCollisionTypes::all();//default() | ActiveCollisionTypes::DYNAMIC_FIXED | ActiveCollisionTypes::KINEMATIC_FIXED;
         /* Create the ground. */
         let collider = ColliderBuilder::cuboid(vial_size_m.x, wall_width_m)
             .translation(vector![0.0, -wall_width_m])
             .user_data(UserData::wall(GROUND_ID).into())
-            // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
 
@@ -60,7 +58,6 @@ impl VialPhysics {
         // Left wall
         let collider = ColliderBuilder::cuboid(wall_width_m, vial_size_m.y)
             .translation(vector![-wall_width_m, vial_size_m.y / 2.0 - wall_width_m])
-            // .active_collision_types(collision_type)
             .user_data(UserData::wall(LEFT_WALL_ID).into())
             .build();
         collider_set.insert(collider);
@@ -72,7 +69,6 @@ impl VialPhysics {
                 vial_size_m.y / 2.0 - wall_width_m
             ])
             .user_data(UserData::wall(RIGHT_WALL_ID).into())
-            // .active_collision_types(collision_type)
             .build();
         collider_set.insert(collider);
 
@@ -127,11 +123,9 @@ impl VialPhysics {
                 .build();
             rigid_body.user_data = obj.id as u128;
 
-            let collision_type = ActiveCollisionTypes::all(); //default() | ActiveCollisionTypes::DYNAMIC_FIXED | ActiveCollisionTypes::KINEMATIC_FIXED;
             let mut collider = ColliderBuilder::ball(obj.size * MM_TO_M)
                 .restitution(0.7)
                 .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
-                // .active_collision_types(collision_type)
                 // .restitution(0.1)
                 .build();
             // collider.set_density(GLASS_DENSITY); // glass
@@ -155,7 +149,7 @@ impl VialPhysics {
         for (_handle, rigid_body) in self.rigid_body_set.iter_mut() {
             if let Some(obj) = map.remove(&rigid_body.user_data) {
                 if obj.flags.contains(ObjectFlags::ENTER_VIAL) {
-                    let x: f32 = rng.sample(&kick_range);
+                    let x: f32 = rng.sample(kick_range);
                     rigid_body.set_linvel(vector![x, 0.0], true);
                     obj.flags.remove(ObjectFlags::ENTER_VIAL);
                 }
@@ -242,36 +236,36 @@ impl VialPhysics {
         );
     }
 
+    #[allow(unused_assignments)]
     pub fn handle_collisions(&mut self, objects: &mut HashMap<u128, &mut Object>) -> Result<(), TryRecvError> {
         use rapier2d::geometry::CollisionEvent::*;
-        while let event = self.collision_recv.try_recv() {
+        loop {
+            let event = self.collision_recv.try_recv();
             match event {
                 // Handle the collision event.
                 Ok(collision_event) => {
                     // eprintln!("Received collision event: {:?}", collision_event);
-                    match collision_event {
-                        Started(a, b, f) => {
-                            let mut a = self.collider_set.get(a).unwrap();
-                            let mut b = self.collider_set.get(b).unwrap();
-                            let mut user_data_a: UserData = a.user_data.into() else { continue; };
-                            let mut user_data_b: UserData = b.user_data.into() else { continue; };
-                            // WALL flag is bigger than OBJECT flag.
-                            if user_data_a.flags.bits() > user_data_b.flags.bits() {
-                                (a, b) = (b, a);
-                                (user_data_a, user_data_b) = (user_data_b, user_data_a);
-                            }
-                            if user_data_a.is_object() && user_data_b.is_wall() && user_data_b.id == GROUND_ID {
-                                if let Some(mut obj) = objects.get_mut(&a.user_data) {
-                                    if obj.flags.contains(ObjectFlags::EXPECT_BREAK) {
-                                        obj.flags.remove(ObjectFlags::EXPECT_BREAK);
-                                        obj.flags.insert(ObjectFlags::BREAK);
-                                    }
-                                } else {
-                                    continue;
+                    if let Started(a, b, _) = collision_event {
+                        let mut a = self.collider_set.get(a).unwrap();
+                        let mut b = self.collider_set.get(b).unwrap();
+                        let mut user_data_a: UserData = a.user_data.into();
+                        let mut user_data_b: UserData = b.user_data.into();
+                        // WALL flag is bigger than OBJECT flag.
+                        // Make `a` the object and `b` the wall.
+                        if user_data_a.flags.bits() > user_data_b.flags.bits() {
+                            (a, b) = (b, a);
+                            (user_data_a, user_data_b) = (user_data_b, user_data_a);
+                        }
+                        if user_data_a.is_object() && user_data_b.is_wall() && user_data_b.id == GROUND_ID {
+                            if let Some(obj) = objects.get_mut(&a.user_data) {
+                                if obj.flags.contains(ObjectFlags::EXPECT_BREAK) {
+                                    obj.flags.remove(ObjectFlags::EXPECT_BREAK);
+                                    obj.flags.insert(ObjectFlags::BREAK);
                                 }
+                            } else {
+                                continue;
                             }
-                        },
-                        _ => ()
+                        }
                     }
                 }
                 Err(TryRecvError::Empty) => break,
@@ -279,11 +273,12 @@ impl VialPhysics {
             }
         }
 
-        while let event = self.contact_force_recv.try_recv() {
+        loop {
+            let event = self.contact_force_recv.try_recv();
 
             match event {
                 // Handle the collision event.
-                Ok(contact_force_event) => {
+                Ok(_contact_force_event) => {
                     // eprintln!("Received contact force event: {:?}", contact_force_event);
                 }
                 Err(TryRecvError::Empty) => break,

@@ -8,6 +8,7 @@ default = [ "ratatui" ]
 
 [dependencies]
 approx = "0.5.1"
+async-channel = "2.3.1"
 bevy_app = "0.13.2"
 bevy_color = "0.12.3"
 bevy_ecs = "0.13.2"

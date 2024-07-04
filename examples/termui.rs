@@ -7,7 +7,7 @@ use std::{
     env,
     fs::{self, File},
     io::{self, stdout, Read, Stdout, Write},
-    time::{Duration, Instant},
+    time::{Duration},
     collections::HashMap,
 };
 
@@ -47,23 +47,16 @@ fn main() -> io::Result<()> {
         }
         None => ()
     }
-    let mut terminal = init_terminal()?;
+    let terminal = init_terminal()?;
     app.insert_resource(my_app);
     app.insert_resource(Term(terminal));
     app.add_systems(bevy_app::Update, update_app);
     app.add_systems(bevy_app::Last, check_exit);
-    // let mut last_tick = Instant::now();
-    // let mut r = Ok(true);
-    // while matches!(r, Ok(true)) {
     let mut cont = true;
     while cont {
-        // r = my_app.update(&mut terminal);
         app.update();
-
         let my_app = app.world.resource::<App>();
-        if matches!(my_app.state, State::End) {
-            cont = false;
-        }
+        cont = !matches!(my_app.state, State::End);
     }
     restore_terminal()
 }
@@ -125,6 +118,12 @@ struct App {
     levels: Vec<Level>,
     level_index: usize,
     state: State,
+}
+
+#[derive(Resource)]
+struct ScriptChannels {
+    input: Sender<Input>,
+    output: Receiver<Output>
 }
 
 #[derive(Resource, Deref, DerefMut)]
@@ -312,13 +311,9 @@ impl App {
             }
             State::Game => {
                 for (i, potion) in self.potions.iter_mut().enumerate() {
-                    match potion.transition() {
-                        Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) => {
-                            sync.push(i);
-                            *potion = vial;
-
-                        }
-                        None => (),
+                    if let Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) = potion.transition() {
+                        sync.push(i);
+                        *potion = vial;
                     }
                 }
             }
