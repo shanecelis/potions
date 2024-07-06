@@ -5,7 +5,9 @@ use bevy_ecs::prelude::*;
 use bevy_app::AppExit;
 use bevy_state::prelude::*;
 use bevy_log::prelude::*;
+use bevy_defer::AsyncCommandsExtension;
 // use bevy_state::prelude::*;
+//
 use std::{
     env,
     fs::{self, File},
@@ -25,7 +27,7 @@ use ratatui::{layout::Flex, prelude::*, widgets::*};
 use potions::vial_physics::VialPhysics;
 use potions::*;
 use async_channel::{Sender, Receiver};
-use crate::script::{Input, Output};
+use crate::script::{self, Input, Output};
 
 
 fn usage() -> io::Result<()> {
@@ -54,14 +56,20 @@ fn main() -> io::Result<()> {
         None => ()
     }
     let terminal = init_terminal()?;
-    app.add_plugins(bevy_state::app::StatesPlugin);
-    app.insert_resource(Pal(Palette(vec![])));
-    app.insert_resource(my_app);
-    app.insert_resource(Term(terminal));
-    app.add_systems(bevy_app::Update, (app_update, tick).chain());
-    app.add_systems(bevy_app::Last, check_exit);
-    app.add_systems(OnEnter(AppState::GotoLevel), goto_level);
-    app.insert_state(AppState::GotoLevel);
+    app.add_plugins((bevy_core::FrameCountPlugin,
+                     bevy_state::app::StatesPlugin,
+                     bevy_time::TimePlugin,
+                     bevy_defer::AsyncPlugin::default_settings()))
+
+    .insert_resource(Pal(Palette(vec![])))
+    .insert_resource(my_app)
+    .insert_resource(Term(terminal))
+    .add_systems(bevy_app::Update, (read_script_output, app_update, tick).chain())
+    .add_systems(bevy_app::Last, check_exit)
+    .add_systems(OnEnter(AppState::GotoLevel), goto_level)
+    // .insert_state(Popup::Message("hi".into()))
+    .insert_state(Popup::None)
+    .insert_state(AppState::GotoLevel);
     let mut cont = true;
     while cont {
         app.update();
@@ -139,6 +147,12 @@ struct Pal(Palette);
 struct Term(Terminal<CrosstermBackend<Stdout>>);
 
 #[derive(States, Debug, Hash, PartialEq, Eq, Clone)]
+enum Popup {
+    Message(String),
+    None
+}
+
+#[derive(States, Debug, Hash, PartialEq, Eq, Clone)]
 enum AppState {
     Game,
     GotoLevel,
@@ -167,28 +181,59 @@ fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
 }
 
 fn goto_level(mut app: ResMut<App>,
-                  mut state: ResMut<NextState<AppState>>,
-                  mut pal: ResMut<Pal>) {
-    let index = app.level_index;
+              mut state: ResMut<NextState<AppState>>,
+              mut pal: ResMut<Pal>,
+mut commands: Commands) {
+    let index: usize = app.level_index;
     warn!("goto level {index}");
     if index < app.levels.len() {
         app.potions = app.levels[index].potions.to_vec();
         app.vial_physics = app.potions.iter().map(VialPhysics::new).collect();
         app.level_index = index;
         pal.0 = app.levels[index].palette.clone();
+        // Setup script.
+        let (in_s, in_r) = async_channel::unbounded();
+        let (out_s, out_r) = async_channel::unbounded();
+        app.channels = Some(ScriptChannels {
+            input: in_s,
+            output: out_r
+        });
+
+        commands.spawn_task(move || async move {
+            crate::script::level_vanilla(index, in_r, out_s).await;
+            Ok(())
+        });
+
         state.set(AppState::Game);
     } else {
         state.set(AppState::End);
     }
 }
 
+fn read_script_output(mut app: ResMut<App>,
+                      mut popup: ResMut<NextState<Popup>>,
+                      mut app_exit: ResMut<Events<bevy_app::AppExit>>,
+) {
+    if let Some(ScriptChannels { ref mut output, .. }) = app.channels {
+        if let Ok(x) = output.try_recv() {
+            match x {
+                Output::Message(s) => popup.set(Popup::Message(s)),
+                Output::End => {
+                    app_exit.send_default();
+                }
+            }
+        }
+    }
+}
+
 fn app_update(mut app: ResMut<App>,
               mut terminal: ResMut<Term>,
               state: Res<State<AppState>>,
+              popup: Res<State<Popup>>,
               mut next_state: ResMut<NextState<AppState>>,
               mut app_exit: ResMut<Events<bevy_app::AppExit>>,
               mut pal: ResMut<Pal>) {
-    let _ = terminal.draw(|frame| app.ui(frame, state.get()));
+    let _ = terminal.draw(|frame| app.ui(frame, state.get(), popup.get()));
 
     let timeout = Duration::from_millis(16);
     let level_index = app.level_index;
@@ -304,20 +349,10 @@ impl App {
         }
     }
 
-    fn ui(&self, frame: &mut Frame, state: &AppState) {
+    fn ui(&self, frame: &mut Frame, state: &AppState, popup: &Popup) {
         match state {
             AppState::Game | AppState::Transfer => self.render_game(frame),
             // AppState::GotoLevel => {
-            //     self.render_game(frame);
-            //     let rect = centered_rect(frame.size(), 35, 35);
-            //     frame.render_widget(Clear, rect);
-            //     frame.render_widget(
-            //         Paragraph::new(format!("You passed level {}", self.level_index + 1))
-            //             .block(Block::default().borders(Borders::all()))
-            //             .alignment(Alignment::Center),
-            //         rect,
-            //     )
-            // }
             AppState::End => {
                 self.render_game(frame);
                 let rect = centered_rect(frame.size(), 35, 35);
@@ -331,60 +366,78 @@ impl App {
             }
             _ => {}
         }
+        match popup {
+            Popup::Message(s) => {
+                self.render_game(frame);
+                let rect = centered_rect(frame.size(), 35, 35);
+                frame.render_widget(Clear, rect);
+                frame.render_widget(
+                    Paragraph::new(s.clone())
+                        .block(Block::default().borders(Borders::all()))
+                        .alignment(Alignment::Center),
+                    rect,
+                )
+            }
+            _ => ()
+        }
     }
 
-fn on_tick(&mut self, state: &State<AppState>, next_state: &mut NextState<AppState>) {
-    self.tick_count += 1;
-    let mut sync = vec![];
-    match state.get() {
-        AppState::Transfer =>
-            if let Some((ref transfer, ref mut t)) = self.transfer.as_mut() {
-                if let Some(i) = self.selected {
-                let j = self.cursor;
-                let pour_from = &self.potions[i];
-                let pour_into = &self.potions[j];
-                if let Some((a, b)) = transfer.lerp(pour_from, pour_into, *t) {
-                    self.potions[i] = a;
-                    self.potions[j] = b;
-                    sync.push(i);
-                    sync.push(j);
-                } else {
-                    *t = 2.0;
+    fn on_tick(&mut self, state: &State<AppState>, next_state: &mut NextState<AppState>) {
+        self.tick_count += 1;
+        let mut sync = vec![];
+        match state.get() {
+            AppState::Transfer =>
+                if let Some((ref transfer, ref mut t)) = self.transfer.as_mut() {
+                    if let Some(i) = self.selected {
+                        let j = self.cursor;
+                        let pour_from = &self.potions[i];
+                        let pour_into = &self.potions[j];
+                        if let Some((a, b)) = transfer.lerp(pour_from, pour_into, *t) {
+                            self.potions[i] = a;
+                            self.potions[j] = b;
+                            sync.push(i);
+                            sync.push(j);
+                        } else {
+                            *t = 2.0;
+                        }
+                        *t += 0.1;
+                        if *t >= 1.0 {
+                            self.selected = None;
+                            next_state.set(AppState::Game);
+                        }
+                    }
                 }
-                *t += 0.1;
-                if *t >= 1.0 {
-                    self.selected = None;
-                    next_state.set(AppState::Game);
+            AppState::Game => {
+                for (i, potion) in self.potions.iter_mut().enumerate() {
+                    if let Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) = potion.transition() {
+                        sync.push(i);
+                        *potion = vial;
+                    }
                 }
             }
-            }
-        AppState::Game => {
-            for (i, potion) in self.potions.iter_mut().enumerate() {
-                if let Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) = potion.transition() {
-                    sync.push(i);
-                    *potion = vial;
+            AppState::GotoLevel => (),
+            AppState::End => (),
+        }
+        for i in &sync {
+            self.sync_objects(*i);
+        }
+        if matches!(state.get(), AppState::Game) {
+            self.step();
+            if ! sync.is_empty() {
+                if self.levels[self.level_index]
+                    .goal
+                    .is_complete(&self.potions)
+                {
+                    if let Some(ScriptChannels { ref mut input, ..}) = self.channels {
+                        input.try_send(Input::GoalReached).expect("script send");
+
+                    }
+                    // self.level_index += 1;
+                    // next_state.set(AppState::GotoLevel);
                 }
             }
         }
-        AppState::GotoLevel => (),
-        AppState::End => (),
     }
-    for i in &sync {
-        self.sync_objects(*i);
-    }
-    if matches!(state.get(), AppState::Game) {
-        self.step();
-        if ! sync.is_empty() {
-            if self.levels[self.level_index]
-                .goal
-                .is_complete(&self.potions)
-            {
-                self.level_index += 1;
-                next_state.set(AppState::GotoLevel);
-            }
-        }
-    }
-}
 
     fn render_game(&self, frame: &mut Frame) {
         let [title, content] =
