@@ -3,11 +3,14 @@
 //! Originally derived from Ratatui canvas example.
 use bevy_ecs::prelude::*;
 use bevy_app::AppExit;
+use bevy_state::prelude::*;
+use bevy_log::prelude::*;
+// use bevy_state::prelude::*;
 use std::{
     env,
     fs::{self, File},
     io::{self, stdout, Read, Stdout, Write},
-    time::{Duration},
+    time::Duration,
     collections::HashMap,
 };
 
@@ -21,6 +24,9 @@ use ratatui::{layout::Flex, prelude::*, widgets::*};
 
 use potions::vial_physics::VialPhysics;
 use potions::*;
+use async_channel::{Sender, Receiver};
+use crate::script::{Input, Output};
+
 
 fn usage() -> io::Result<()> {
     eprintln!("Usage: termui");
@@ -48,32 +54,26 @@ fn main() -> io::Result<()> {
         None => ()
     }
     let terminal = init_terminal()?;
+    app.add_plugins(bevy_state::app::StatesPlugin);
+    app.insert_resource(Pal(Palette(vec![])));
     app.insert_resource(my_app);
     app.insert_resource(Term(terminal));
-    app.add_systems(bevy_app::Update, update_app);
+    app.add_systems(bevy_app::Update, (app_update, tick).chain());
     app.add_systems(bevy_app::Last, check_exit);
+    app.add_systems(OnEnter(AppState::GotoLevel), goto_level);
+    app.insert_state(AppState::GotoLevel);
     let mut cont = true;
     while cont {
         app.update();
-        let my_app = app.world.resource::<App>();
-        cont = !matches!(my_app.state, State::End);
+        let my_state = app.world().resource::<State<AppState>>();
+        cont = !matches!(my_state.get(), AppState::End);
     }
     restore_terminal()
 }
 
-fn update_app(mut my_app: ResMut<App>,
-              mut terminal: ResMut<Term>,
-              mut app_exit_events: ResMut<Events<bevy_app::AppExit>>
-) {
-    let r = my_app.update(&mut terminal);
-    if !matches!(r, Ok(true)) {
-        app_exit_events.send(bevy_app::AppExit);
-    }
-}
-
-fn check_exit(mut app_exit: EventReader<AppExit>, mut my_app: ResMut<App>) {
+fn check_exit(mut app_exit: EventReader<AppExit>,  mut state: ResMut<NextState<AppState>>) {
     if app_exit.read().next().is_some() {
-        my_app.state = State::End;
+        state.set(AppState::End);
     }
 }
 
@@ -108,6 +108,10 @@ fn read_levels(dir: &str) -> io::Result<Vec<Level>> {
     }
     Ok(levels)
 }
+
+// #[derive(Resource)]
+// struct LevelNo(usize);
+
 #[derive(Resource)]
 struct App {
     tick_count: u64,
@@ -117,7 +121,9 @@ struct App {
     selected: Option<usize>,
     levels: Vec<Level>,
     level_index: usize,
-    state: State,
+    // state: AppState,
+    channels: Option<ScriptChannels>,
+    transfer: Option<(Transfer, f32)>
 }
 
 #[derive(Resource)]
@@ -127,13 +133,16 @@ struct ScriptChannels {
 }
 
 #[derive(Resource, Deref, DerefMut)]
+struct Pal(Palette);
+
+#[derive(Resource, Deref, DerefMut)]
 struct Term(Terminal<CrosstermBackend<Stdout>>);
 
-#[derive(Debug)]
-enum State {
+#[derive(States, Debug, Hash, PartialEq, Eq, Clone)]
+enum AppState {
     Game,
-    NextLevel,
-    Transfer(Transfer, f32),
+    GotoLevel,
+    Transfer,
     End,
 }
 
@@ -157,10 +166,99 @@ fn centered_rect(r: Rect, percent_x: u16, percent_y: u16) -> Rect {
         .split(popup_layout[1])[1]
 }
 
+fn goto_level(mut app: ResMut<App>,
+                  mut state: ResMut<NextState<AppState>>,
+                  mut pal: ResMut<Pal>) {
+    let index = app.level_index;
+    warn!("goto level {index}");
+    if index < app.levels.len() {
+        app.potions = app.levels[index].potions.to_vec();
+        app.vial_physics = app.potions.iter().map(VialPhysics::new).collect();
+        app.level_index = index;
+        pal.0 = app.levels[index].palette.clone();
+        state.set(AppState::Game);
+    } else {
+        state.set(AppState::End);
+    }
+}
+
+fn app_update(mut app: ResMut<App>,
+              mut terminal: ResMut<Term>,
+              state: Res<State<AppState>>,
+              mut next_state: ResMut<NextState<AppState>>,
+              mut app_exit: ResMut<Events<bevy_app::AppExit>>,
+              mut pal: ResMut<Pal>) {
+    let _ = terminal.draw(|frame| app.ui(frame, state.get()));
+
+    let timeout = Duration::from_millis(16);
+    let level_index = app.level_index;
+    if event::poll(timeout).is_ok() {
+        if let Ok(Event::Key(key)) = event::read() {
+            let quit = match key.code {
+                KeyCode::Char('q') => true,
+                KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => true,
+                _ => false
+            };
+            if quit {
+                app_exit.send_default();
+            }
+            match state.get() {
+                AppState::Game => match key.code {
+                    KeyCode::Char('m') => {
+                        let c: usize = app.cursor;
+                        // let palette = &mut app.levels[level_index].palette;
+                        app.potions[c].mix(&mut pal);
+                    }
+                    KeyCode::Char('r') => {
+                        app.goto_level(level_index);
+                    }
+                    KeyCode::Char('n') => {
+                        app.goto_level(level_index + 1);
+                    }
+                    KeyCode::Char('p') => {
+                        app.goto_level(level_index.saturating_sub(1));
+                    }
+                    KeyCode::Char(' ') | KeyCode::Up => match app.selected {
+                        Some(i) => {
+                            if i == app.cursor {
+                                app.selected = None;
+                            } else if let Some(transfer) =
+                                app.potions[i].pour(&app.potions[app.cursor])
+                            {
+                                // app.state = AppState::Transfer(transfer, 0.0);
+                                app.transfer = Some((transfer, 0.0));
+                                next_state.set(AppState::Transfer);
+                            } else {
+                                app.selected = None;
+                            }
+                        }
+                        None => app.selected = Some(app.cursor),
+                    },
+                    KeyCode::Right | KeyCode::Char('l') => {
+                        app.cursor = (app.cursor + 1).rem_euclid(app.potions.len())
+                    }
+                    KeyCode::Left | KeyCode::Char('h') => {
+                        app.cursor = (app.cursor + app.potions.len() - 1)
+                            .rem_euclid(app.potions.len())
+                    }
+                    _ => {}
+                },
+                AppState::End => {}
+                _ => {}
+            }
+        }
+    }
+}
+
+fn tick(mut app: ResMut<App>, state: Res<State<AppState>>, mut next_state: ResMut<NextState<AppState>>) {
+    app.on_tick(&state, &mut next_state);
+}
+
+
 impl App {
     fn new() -> App {
         let levels = levels();
-        let mut my_app = App {
+        App {
             tick_count: 0,
             cursor: 0,
             selected: None,
@@ -168,10 +266,10 @@ impl App {
             potions: vec![],
             vial_physics: vec![],
             levels,
-            state: State::Game,
-        };
-        my_app.goto_level(my_app.level_index);
-        my_app
+            // state: AppState::Game,
+            channels: None,
+            transfer: None,
+        }
     }
 
     pub fn goto_level(&mut self, index: usize) -> bool {
@@ -185,79 +283,6 @@ impl App {
         }
     }
 
-    pub fn update(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> io::Result<bool> {
-        let _ = terminal.draw(|frame| self.ui(frame));
-
-        let timeout = Duration::from_millis(16);
-            if event::poll(timeout)? {
-                if let Event::Key(key) = event::read()? {
-                    let quit = match key.code {
-                        KeyCode::Char('q') => true,
-                        KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => true,
-                        _ => false
-                    };
-                    if quit {
-                        return Ok(false);
-                    }
-                    match self.state {
-                        State::NextLevel => {
-                            if self.goto_level(self.level_index + 1) {
-                                self.state = State::Game;
-                            } else {
-                                self.state = State::End;
-                            }
-                        }
-                        State::Game => match key.code {
-                            KeyCode::Char('m') => {
-                                let palette = &mut self.levels[self.level_index].palette;
-                                self.potions[self.cursor].mix(palette);
-                            }
-                            KeyCode::Char('r') => {
-                                self.goto_level(self.level_index);
-                            }
-                            KeyCode::Char('n') => {
-                                self.goto_level(self.level_index + 1);
-                            }
-                            KeyCode::Char('p') => {
-                                self.goto_level(self.level_index.saturating_sub(1));
-                            }
-                            KeyCode::Char(' ') | KeyCode::Up => match self.selected {
-                                Some(i) => {
-                                    if i == self.cursor {
-                                        self.selected = None;
-                                    } else if let Some(transfer) =
-                                        self.potions[i].pour(&self.potions[self.cursor])
-                                    {
-                                        self.state = State::Transfer(transfer, 0.0);
-                                    } else {
-                                        self.selected = None;
-                                    }
-                                }
-                                None => self.selected = Some(self.cursor),
-                            },
-                            KeyCode::Right | KeyCode::Char('l') => {
-                                self.cursor = (self.cursor + 1).rem_euclid(self.potions.len())
-                            }
-                            KeyCode::Left | KeyCode::Char('h') => {
-                                self.cursor = (self.cursor + self.potions.len() - 1)
-                                    .rem_euclid(self.potions.len())
-                            }
-                            _ => {}
-                        },
-                        State::End => {}
-                        _ => {}
-                    }
-                }
-            }
-
-            // if last_tick.elapsed() >= tick_rate {
-            //     let current = Instant::now();
-                self.on_tick();
-            //     last_tick = current;
-            // }
-        // }
-        Ok(true)
-    }
 
     fn sync_objects(&mut self, vial_index: usize) {
         for obj in &self.potions[vial_index].objects {
@@ -279,12 +304,42 @@ impl App {
         }
     }
 
-    fn on_tick(&mut self) {
-        self.tick_count += 1;
-        let mut sync = vec![];
-        match self.state {
-            State::Transfer(ref transfer, ref mut t) => {
-                let i = self.selected.unwrap();
+    fn ui(&self, frame: &mut Frame, state: &AppState) {
+        match state {
+            AppState::Game | AppState::Transfer => self.render_game(frame),
+            // AppState::GotoLevel => {
+            //     self.render_game(frame);
+            //     let rect = centered_rect(frame.size(), 35, 35);
+            //     frame.render_widget(Clear, rect);
+            //     frame.render_widget(
+            //         Paragraph::new(format!("You passed level {}", self.level_index + 1))
+            //             .block(Block::default().borders(Borders::all()))
+            //             .alignment(Alignment::Center),
+            //         rect,
+            //     )
+            // }
+            AppState::End => {
+                self.render_game(frame);
+                let rect = centered_rect(frame.size(), 35, 35);
+                frame.render_widget(Clear, rect);
+                frame.render_widget(
+                    Paragraph::new("You finished the game!\nThanks for playing.\nHit 'q' to quit.")
+                        .block(Block::default().borders(Borders::all()))
+                        .alignment(Alignment::Center),
+                    rect,
+                )
+            }
+            _ => {}
+        }
+    }
+
+fn on_tick(&mut self, state: &State<AppState>, next_state: &mut NextState<AppState>) {
+    self.tick_count += 1;
+    let mut sync = vec![];
+    match state.get() {
+        AppState::Transfer =>
+            if let Some((ref transfer, ref mut t)) = self.transfer.as_mut() {
+                if let Some(i) = self.selected {
                 let j = self.cursor;
                 let pour_from = &self.potions[i];
                 let pour_into = &self.potions[j];
@@ -303,68 +358,39 @@ impl App {
                         .goal
                         .is_complete(&self.potions)
                     {
-                        self.state = State::NextLevel;
-                    } else {
-                        self.state = State::Game;
+                        self.level_index += 1;
+                        next_state.set(AppState::GotoLevel);
                     }
                 }
-            }
-            State::Game => {
-                for (i, potion) in self.potions.iter_mut().enumerate() {
-                    if let Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) = potion.transition() {
-                        sync.push(i);
-                        *potion = vial;
-                    }
                 }
             }
-            State::NextLevel => (),
-            State::End => (),
-        }
-        for i in &sync {
-            self.sync_objects(*i);
-        }
-        if matches!(self.state, State::Game) {
-            self.step();
-            if ! sync.is_empty() {
-                if self.levels[self.level_index]
-                    .goal
-                    .is_complete(&self.potions)
-                {
-                    self.state = State::NextLevel;
-                } else {
-                    self.state = State::Game;
+        AppState::Game => {
+            for (i, potion) in self.potions.iter_mut().enumerate() {
+                if let Some(Transition::BreakSeed(vial) | Transition::MoveDown(vial)) = potion.transition() {
+                    sync.push(i);
+                    *potion = vial;
                 }
+            }
+        }
+        AppState::GotoLevel => (),
+        AppState::End => (),
+    }
+    for i in &sync {
+        self.sync_objects(*i);
+    }
+    if matches!(state.get(), AppState::Game) {
+        self.step();
+        if ! sync.is_empty() {
+            if self.levels[self.level_index]
+                .goal
+                .is_complete(&self.potions)
+            {
+                self.level_index += 1;
+                next_state.set(AppState::GotoLevel);
             }
         }
     }
-
-    fn ui(&self, frame: &mut Frame) {
-        match self.state {
-            State::Game | State::Transfer(_, _) => self.render_game(frame),
-            State::NextLevel => {
-                self.render_game(frame);
-                let rect = centered_rect(frame.size(), 35, 35);
-                frame.render_widget(Clear, rect);
-                frame.render_widget(
-                    Paragraph::new(format!("You passed level {}", self.level_index + 1))
-                        .block(Block::default().borders(Borders::all()))
-                        .alignment(Alignment::Center),
-                    rect,
-                )
-            }
-            State::End => {
-                self.render_game(frame);
-                let rect = centered_rect(frame.size(), 35, 35);
-                frame.render_widget(Clear, rect);
-                frame.render_widget(
-                    Paragraph::new("You finished the game!\nThanks for playing.\nHit 'q' to quit.")
-                        .block(Block::default().borders(Borders::all()))
-                        .alignment(Alignment::Center),
-                    rect,
-                )
-            }
-        }
-    }
+}
 
     fn render_game(&self, frame: &mut Frame) {
         let [title, content] =

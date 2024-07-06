@@ -7,7 +7,7 @@ use std::collections::BinaryHeap;
 use crate::user_data::{UserData};
 
 #[derive(Debug, Clone, Deref, DerefMut, Deserialize, Serialize)]
-pub struct Palette(Vec<Color>);
+pub struct Palette(pub Vec<Color>);
 
 pub fn rgb(r: u8, g: u8, b: u8) -> Color {
     color_art::Color::from_rgb(r, g, b).unwrap().into()
