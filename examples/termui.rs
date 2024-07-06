@@ -192,7 +192,7 @@ fn app_update(mut app: ResMut<App>,
 
     let timeout = Duration::from_millis(16);
     let level_index = app.level_index;
-    if event::poll(timeout).is_ok() {
+    if event::poll(timeout).expect("poll") {
         if let Ok(Event::Key(key)) = event::read() {
             let quit = match key.code {
                 KeyCode::Char('q') => true,
@@ -354,15 +354,9 @@ fn on_tick(&mut self, state: &State<AppState>, next_state: &mut NextState<AppSta
                 *t += 0.1;
                 if *t >= 1.0 {
                     self.selected = None;
-                    if self.levels[self.level_index]
-                        .goal
-                        .is_complete(&self.potions)
-                    {
-                        self.level_index += 1;
-                        next_state.set(AppState::GotoLevel);
-                    }
+                    next_state.set(AppState::Game);
                 }
-                }
+            }
             }
         AppState::Game => {
             for (i, potion) in self.potions.iter_mut().enumerate() {
